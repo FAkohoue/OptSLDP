@@ -43,7 +43,7 @@ src/*.dll
 # pkgdown::build_site() writes to docs/ by default.
 # The GitHub Actions workflow uploads docs/ as a Pages artefact — it does NOT
 # need to be committed.  Keep it out of version control.
-docs/
+#docs/
 
 # pkgdown internal reference cache (speeds up re-builds, not needed in git)
 pkgdown/reference/
