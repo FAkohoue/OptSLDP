@@ -24,12 +24,17 @@ devtools::check()
 
 
 unloadNamespace("OptSLDP")
+
+pkgdown::clean_site(force = TRUE)
 pkgdown::build_site()
 
-pkgdown::build_site(override = list(template = list(favicon = FALSE)))
 
 devtools::build()
 
+# Run from your package root in R
+file.create("docs/.nojekyll")
+
+list.files("docs", all.files = TRUE)
 
 # Create the correct folder
 dir.create("pkgdown/favicon", showWarnings = FALSE)

@@ -1,47 +1,3 @@
-# ==============================================================================
-# .github/workflows/pkgdown.yaml
-#
-# Builds and deploys the OptSLDP pkgdown site to GitHub Pages.
-#
-# Triggers
-# --------
-#   • Push to main or master (automatic deploy on every merge)
-#   • workflow_dispatch      (manual trigger from the Actions tab)
-#
-# What this workflow does
-# -----------------------
-#   1. Check out the repository with full history (needed for pkgdown's
-#      last-modified dates in the reference index).
-#   2. Install a pinned version of Pandoc so vignette rendering is
-#      reproducible across runner image updates.
-#   3. Install R with a version constraint matching the package's
-#      Depends: R (>= 4.1.0).
-#   4. Restore the system-package cache (apt) so libcurl, libssl, and
-#      other compiled-package headers do not need to be rebuilt on
-#      every run.
-#   5. Install Bioconductor packages (SNPRelate, gdsfmt, VariantAnnotation
-#      and friends) that are listed in Suggests but that r-lib/actions
-#      cannot install from CRAN.
-#   6. Install all remaining CRAN/DESCRIPTION dependencies via
-#      r-lib/actions/setup-r-dependencies, including pkgdown itself.
-#   7. Build the site with pkgdown::build_site_github_pages(), which
-#      sets the correct base URL and writes output to docs/.
-#   8. Upload the docs/ folder as a GitHub Pages artefact.
-#   9. Deploy to GitHub Pages via the official actions/deploy-pages
-#      action (v4 API — no PAT or third-party action needed).
-#
-# Required repository settings
-# ----------------------------
-#   Settings → Pages → Source: GitHub Actions
-#   (do NOT use "Deploy from a branch" — that conflicts with this workflow)
-#
-# Concurrency
-# -----------
-#   Only one deploy runs at a time; if a new push arrives while a deploy
-#   is in progress, the in-progress run is cancelled and the new one
-#   takes over, preventing race conditions on the gh-pages branch.
-# ==============================================================================
-
 name: pkgdown
 
 on:
@@ -49,12 +5,10 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-# Cancel any in-progress deploy when a newer commit is pushed
 concurrency:
-  group:  "pages-${{ github.ref }}"
+  group: "pages-${{ github.ref }}"
   cancel-in-progress: true
 
-# Permissions required by actions/deploy-pages
 permissions:
   contents: read
   pages:    write
@@ -62,166 +16,69 @@ permissions:
 
 jobs:
 
-  # ============================================================================
-  # Job: build
-  # Builds the pkgdown site and uploads it as a Pages artefact.
-  # ============================================================================
   build:
     runs-on: ubuntu-latest
 
-    env:
-      # Disable interactive prompts from R package installers
-      RENV_CONFIG_MEMOIZE_SYMLINKS: "FALSE"
-      R_KEEP_PKG_SOURCE: "yes"
-
     steps:
 
-      # --------------------------------------------------------------------------
-      # 1. Check out the repository
-      #    fetch-depth: 0  → full history so pkgdown can read commit dates
-      # --------------------------------------------------------------------------
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # --------------------------------------------------------------------------
-      # 2. Install Pandoc (pinned version for reproducibility)
-      #    Pandoc converts vignette .Rmd files; the runner default can lag
-      #    behind the version used during local development.
-      # --------------------------------------------------------------------------
       - name: Install Pandoc
         uses: r-lib/actions/setup-pandoc@v2
         with:
           pandoc-version: "3.1.11"
 
-      # --------------------------------------------------------------------------
-      # 3. Install R
-      #    use-public-rspm: true → use Posit Public Package Manager (RSPM),
-      #    which provides pre-compiled Linux binaries for CRAN packages and
-      #    cuts install times from ~20 min to ~2–3 min.
-      # --------------------------------------------------------------------------
       - name: Install R
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version:          "release"
-          use-public-rspm:    true
-          extra-repositories: "https://bioconductor.org/packages/release/bioc"
-
-      # --------------------------------------------------------------------------
-      # 4. Cache system libraries (apt packages)
-      #    Compiled R packages (e.g. gdsfmt, data.table) need libcurl-dev,
-      #    libssl-dev, libxml2-dev, and zlib1g-dev. Caching the apt layer
-      #    saves ~40 s per run after the first.
-      # --------------------------------------------------------------------------
-      - name: Cache system libraries
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key:  ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/pkgdown.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-apt-
+          r-version: "release"
+          use-public-rspm: true
 
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            libcurl4-openssl-dev \
-            libssl-dev           \
-            libxml2-dev          \
-            libfontconfig1-dev   \
-            libharfbuzz-dev      \
-            libfribidi-dev       \
-            libfreetype6-dev     \
-            libpng-dev           \
-            libtiff5-dev         \
-            libjpeg-dev          \
-            zlib1g-dev           \
-            libgit2-dev
-
-      # --------------------------------------------------------------------------
-      # 5. Install Bioconductor dependencies
-      #    r-lib/actions/setup-r-dependencies installs CRAN packages
-      #    listed in DESCRIPTION, but it cannot resolve Bioconductor
-      #    packages. SNPRelate, gdsfmt, VariantAnnotation, and the
-      #    other Bioc Suggests must be installed manually via
-      #    BiocManager before the main dependency install runs.
-      #    BiocManager::install() with no version argument auto-detects
-      #    the correct Bioconductor release for the installed R version.
-      # --------------------------------------------------------------------------
-      - name: Cache R packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}-bioc
-          restore-keys: |
-            ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}-
-            ${{ runner.os }}-r-
+            libcurl4-openssl-dev libssl-dev libxml2-dev \
+            libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+            libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
+            zlib1g-dev libgit2-dev
 
       - name: Install Bioconductor packages
         shell: Rscript {0}
         run: |
           if (!requireNamespace("BiocManager", quietly = TRUE))
-            install.packages("BiocManager")
+            install.packages("BiocManager", repos = "https://cloud.r-project.org")
+          BiocManager::install(ask = FALSE, update = FALSE)
+          bioc_pkgs <- c("SNPRelate", "gdsfmt", "VariantAnnotation",
+                         "SummarizedExperiment", "GenomeInfoDb",
+                         "Biostrings", "S4Vectors")
+          to_install <- bioc_pkgs[!vapply(bioc_pkgs, requireNamespace,
+                                          logical(1L), quietly = TRUE)]
+          if (length(to_install))
+            BiocManager::install(to_install, ask = FALSE, update = FALSE)
 
-          BiocManager::install(
-            ask    = FALSE,
-            update = FALSE
-          )
+      - name: Install CRAN packages
+        shell: Rscript {0}
+        run: |
+          pkgs <- c("pkgdown", "knitr", "rmarkdown",
+                    "data.table", "testthat")
+          to_install <- pkgs[!vapply(pkgs, requireNamespace,
+                                     logical(1L), quietly = TRUE)]
+          if (length(to_install))
+            install.packages(to_install,
+                             repos = "https://cloud.r-project.org")
 
-          # Core Bioconductor Suggests from DESCRIPTION
-          bioc_pkgs <- c(
-            "SNPRelate",
-            "gdsfmt",
-            "VariantAnnotation",
-            "SummarizedExperiment",
-            "GenomeInfoDb",
-            "Biostrings",
-            "S4Vectors"
-          )
+      - name: Install local package
+        shell: Rscript {0}
+        run: |
+          install.packages(".",
+                           repos        = NULL,
+                           type         = "source",
+                           INSTALL_opts = "--no-docs --no-multiarch --no-build-vignettes")
 
-          missing_pkgs <- bioc_pkgs[
-            !vapply(bioc_pkgs, requireNamespace,
-                    logical(1L), quietly = TRUE)
-          ]
-
-          if (length(missing_pkgs) > 0L) {
-            message("Installing Bioconductor packages: ",
-                    paste(missing_pkgs, collapse = ", "))
-            BiocManager::install(
-              missing_pkgs,
-              ask    = FALSE,
-              update = FALSE
-            )
-          } else {
-            message("All Bioconductor packages already installed.")
-          }
-
-      # --------------------------------------------------------------------------
-      # 6. Install CRAN + local package dependencies
-      #    extra-packages installs pkgdown from CRAN (any version) and
-      #    the local package (local::.) so the vignette can call
-      #    library(OptSLDP) and system.file("extdata", ...).
-      # --------------------------------------------------------------------------
-      - name: Install CRAN dependencies
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            any::pkgdown
-            local::.
-          needs: website
-
-      # --------------------------------------------------------------------------
-      # 7. Build the pkgdown site
-      #    build_site_github_pages() is the recommended entry point for CI:
-      #      • Sets the correct base URL from _pkgdown.yml
-      #      • Writes output to docs/ (the Pages publish dir)
-      #      • new_process = FALSE — runs in the current R session so
-      #        the locally installed OptSLDP package is visible
-      #      • install = FALSE — package was already installed in step 6
-      #    PKGDOWN_DEV_MODE=release suppresses the "dev version" banner
-      #    that pkgdown shows when the package version is not on CRAN.
-      # --------------------------------------------------------------------------
       - name: Build pkgdown site
         env:
           PKGDOWN_DEV_MODE: release
@@ -232,12 +89,6 @@ jobs:
             install     = FALSE
           )
 
-      # --------------------------------------------------------------------------
-      # 8. Configure GitHub Pages and upload the docs/ artefact
-      #    actions/configure-pages writes the correct base href into the
-      #    artefact; actions/upload-pages-artifact bundles docs/ for the
-      #    deploy job.
-      # --------------------------------------------------------------------------
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
@@ -246,12 +97,6 @@ jobs:
         with:
           path: docs
 
-  # ============================================================================
-  # Job: deploy
-  # Deploys the uploaded artefact to GitHub Pages.
-  # Runs only after the build job succeeds.
-  # Uses the official actions/deploy-pages (no PAT or third-party action).
-  # ============================================================================
   deploy:
     needs: build
     runs-on: ubuntu-latest
