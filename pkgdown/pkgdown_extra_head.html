@@ -1,0 +1,652 @@
+<!-- ============================================================
+     pkgdown/extra_head.html
+     Injected into <head> on every OptSLDP pkgdown page.
+
+     Sections:
+       1. Google Fonts preconnect + preload hints
+       2. Open Graph / Twitter card meta tags
+       3. MathJax 3 configuration (inline \( \) and display $$ $$)
+       4. Custom CSS — visual refinements that complement bslib tokens
+       5. Copy-to-clipboard enhancement for code blocks
+     ============================================================ -->
+
+
+<!-- ============================================================
+     1. GOOGLE FONTS — preconnect + preload
+     bslib requests Inter and Fira Code at render time; these hints
+     tell the browser to open the connection before the stylesheet
+     is parsed, shaving ~200 ms off first-contentful-paint on cold
+     loads.
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com"    crossorigin>
+
+<!-- Inter (base + heading) — weights 300 400 500 600 700 -->
+<link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+
+<!-- Fira Code (code blocks) — weights 400 500 -->
+<link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap">
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap">
+
+
+<!-- ============================================================
+     2. OPEN GRAPH + TWITTER CARD META TAGS
+     Used by GitHub, Twitter/X, LinkedIn, and search engines when
+     the pkgdown site URL is shared or indexed.
+     ============================================================ -->
+<meta property="og:type"        content="website">
+<meta property="og:url"         content="https://FAkohoue.github.io/OptSLDP/">
+<meta property="og:title"
+      content="OptSLDP — Optimized Selective Linkage Disequilibrium Pruning">
+<meta property="og:description"
+      content="An optimized SLDP pipeline for genomic prediction panel
+               construction. Supports multi-trait union protection,
+               covariate-adjusted marginal screening, and automatic scaling
+               from small in-memory panels to WGS datasets with >10 M SNPs.">
+<meta property="og:image"
+      content="https://FAkohoue.github.io/OptSLDP/man/figures/logo.png">
+<meta property="og:image:alt"   content="OptSLDP package logo">
+<meta property="og:locale"      content="en_US">
+<meta property="og:site_name"   content="OptSLDP">
+
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"
+      content="OptSLDP — Optimized Selective Linkage Disequilibrium Pruning">
+<meta name="twitter:description"
+      content="Optimized SLDP pipeline for genomic prediction panels.
+               Multi-trait, covariate-adjusted, memory-safe, scales to WGS.">
+<meta name="twitter:image"
+      content="https://FAkohoue.github.io/OptSLDP/man/figures/logo.png">
+
+<!-- Standard SEO -->
+<meta name="author"      content="Félicien Akohoue">
+<meta name="keywords"
+      content="genomic selection, linkage disequilibrium, SNP pruning,
+               genomic prediction, SLDP, bioinformatics, R package,
+               plant genomics, rice, GWAS">
+<meta name="robots"      content="index, follow">
+<link rel="canonical"    href="https://FAkohoue.github.io/OptSLDP/">
+
+
+<!-- ============================================================
+     3. MATHJAX 3 CONFIGURATION
+     pkgdown sets math-rendering: mathjax which loads MathJax 3
+     automatically. This block configures the delimiters so that:
+       • Inline math  — \( … \)  and  $ … $
+       • Display math — \[ … \]  and  $$ … $$
+     The processEscapes option ensures \$ is treated as a literal
+     dollar sign rather than opening an inline math environment.
+     ============================================================ -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath:     [["\\(", "\\)"], ["$",  "$" ]],
+      displayMath:    [["\\[", "\\]"], ["$$", "$$"]],
+      processEscapes: true,
+      processEnvironments: true,
+      tags: "ams",           /* AMS-style equation numbering    */
+      packages: {"[+]": ["boldsymbol", "amsmath", "amssymb"]}
+    },
+    options: {
+      skipHtmlTags: ["script", "noscript", "style", "textarea", "pre",
+                     "code", "annotation", "annotation-xml"]
+    },
+    startup: {
+      ready() {
+        MathJax.startup.defaultReady();
+        /* Re-typeset after pkgdown dynamically loads page content */
+        document.addEventListener("DOMContentLoaded", function () {
+          if (window.MathJax && MathJax.typesetPromise) {
+            MathJax.typesetPromise();
+          }
+        });
+      }
+    }
+  };
+</script>
+
+
+<!-- ============================================================
+     4. CUSTOM CSS
+     Refinements that complement the bslib design tokens defined in
+     _pkgdown.yml without overriding Bootstrap's utility layer.
+
+     Design tokens (from _pkgdown.yml bslib):
+       primary:   #0C4C80  (deep navy — headings, links, navbar)
+       secondary: #3AA0FF  (bright blue — accents, badges)
+       success:   #7ED957  (green — status pills, inline badges)
+       base_font: Inter
+       code_font: Fira Code
+     ============================================================ -->
+<style>
+  /* ------------------------------------------------------------------
+     4.1  CSS CUSTOM PROPERTIES
+     Expose the bslib palette as CSS variables so all rules below
+     share a single source of truth.
+     ------------------------------------------------------------------ */
+  :root {
+    --optsldp-primary:      #0C4C80;
+    --optsldp-primary-rgb:  12, 76, 128;
+    --optsldp-secondary:    #3AA0FF;
+    --optsldp-success:      #7ED957;
+    --optsldp-light-bg:     #F4F7FB;
+    --optsldp-border:       #D0DDE9;
+    --optsldp-text-muted:   #5A6D7E;
+    --optsldp-code-bg:      #F0F4F8;
+    --optsldp-radius:       6px;
+    --optsldp-shadow-sm:    0 1px 3px rgba(12, 76, 128, 0.10);
+    --optsldp-shadow-md:    0 4px 12px rgba(12, 76, 128, 0.14);
+    --optsldp-transition:   0.18s ease;
+  }
+
+  /* ------------------------------------------------------------------
+     4.2  TYPOGRAPHY
+     ------------------------------------------------------------------ */
+  body {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-size:   16px;
+    line-height: 1.65;
+    color:       #1a2735;
+    -webkit-font-smoothing:  antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family:  "Inter", system-ui, -apple-system, sans-serif;
+    font-weight:  600;
+    color:        var(--optsldp-primary);
+    line-height:  1.25;
+    margin-top:   1.6em;
+    margin-bottom: 0.5em;
+  }
+
+  h1 { font-size: 2rem;    letter-spacing: -0.02em; }
+  h2 { font-size: 1.5rem;  letter-spacing: -0.01em; border-bottom: 2px solid var(--optsldp-border); padding-bottom: 0.3em; }
+  h3 { font-size: 1.2rem; }
+  h4 { font-size: 1rem;   font-weight: 500; color: var(--optsldp-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Lead paragraph on home page */
+  .lead { font-size: 1.1rem; font-weight: 400; color: #2c3e50; }
+
+  /* ------------------------------------------------------------------
+     4.3  LINKS
+     ------------------------------------------------------------------ */
+  a {
+    color:           var(--optsldp-secondary);
+    text-decoration: none;
+    transition:      color var(--optsldp-transition),
+                     opacity var(--optsldp-transition);
+  }
+  a:hover {
+    color:           var(--optsldp-primary);
+    text-decoration: underline;
+  }
+
+  /* ------------------------------------------------------------------
+     4.4  NAVBAR
+     Deep navy background; secondary blue for active/hover accents.
+     ------------------------------------------------------------------ */
+  .navbar {
+    background-color: var(--optsldp-primary) !important;
+    border-bottom:    3px solid var(--optsldp-secondary);
+    box-shadow:       var(--optsldp-shadow-md);
+    padding-top:      0.6rem;
+    padding-bottom:   0.6rem;
+  }
+
+  .navbar-brand {
+    font-weight:  700;
+    font-size:    1.15rem;
+    color:        #ffffff !important;
+    letter-spacing: -0.01em;
+  }
+
+  .navbar-nav .nav-link {
+    color:       rgba(255, 255, 255, 0.88) !important;
+    font-weight: 500;
+    font-size:   0.92rem;
+    padding:     0.45rem 0.9rem;
+    border-radius: var(--optsldp-radius);
+    transition:  background-color var(--optsldp-transition),
+                 color var(--optsldp-transition);
+  }
+
+  .navbar-nav .nav-link:hover,
+  .navbar-nav .nav-link.active {
+    color:            #ffffff !important;
+    background-color: rgba(58, 160, 255, 0.25);
+  }
+
+  /* GitHub icon in navbar */
+  .navbar-nav .nav-link .fab.fa-github {
+    font-size: 1.15rem;
+    vertical-align: middle;
+  }
+
+  /* ------------------------------------------------------------------
+     4.5  SIDEBAR (reference index, articles)
+     ------------------------------------------------------------------ */
+  .sidebar {
+    border-right: 1px solid var(--optsldp-border);
+    padding-right: 1.5rem;
+  }
+
+  .sidebar .list-unstyled li a {
+    color:        #2c3e50;
+    font-size:    0.875rem;
+    padding:      0.2rem 0;
+    display:      block;
+    transition:   color var(--optsldp-transition),
+                  padding-left var(--optsldp-transition);
+  }
+
+  .sidebar .list-unstyled li a:hover {
+    color:        var(--optsldp-secondary);
+    padding-left: 4px;
+    text-decoration: none;
+  }
+
+  /* Section headings in the reference sidebar */
+  .sidebar h2 {
+    font-size:    0.7rem;
+    font-weight:  600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color:        var(--optsldp-text-muted);
+    margin-top:   1.4rem;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  /* ------------------------------------------------------------------
+     4.6  CODE BLOCKS AND INLINE CODE
+     ------------------------------------------------------------------ */
+  code, kbd, samp {
+    font-family:   "Fira Code", "Cascadia Code", "Consolas", monospace;
+    font-size:     0.875em;
+    font-variant-ligatures: common-ligatures;
+  }
+
+  /* Inline code */
+  p code, li code, td code, h1 code, h2 code, h3 code, h4 code {
+    background-color: var(--optsldp-code-bg);
+    color:            var(--optsldp-primary);
+    padding:          0.15em 0.4em;
+    border-radius:    4px;
+    border:           1px solid var(--optsldp-border);
+    white-space:      nowrap;
+  }
+
+  /* Fenced code blocks produced by knitr / pkgdown */
+  div.sourceCode,
+  pre.sourceCode,
+  pre.r,
+  pre.sh,
+  pre.yaml {
+    background-color: #1E2B38;       /* dark navy — complements primary  */
+    border:           1px solid #2c3e50;
+    border-left:      4px solid var(--optsldp-secondary);
+    border-radius:    var(--optsldp-radius);
+    padding:          1.1rem 1.3rem;
+    overflow-x:       auto;
+    box-shadow:       var(--optsldp-shadow-sm);
+    position:         relative;      /* anchor for copy button           */
+  }
+
+  div.sourceCode code,
+  pre.sourceCode code,
+  pre.r code {
+    font-family: "Fira Code", monospace;
+    font-size:   0.83rem;
+    line-height: 1.6;
+    color:       #CDD9E5;
+    background:  transparent;
+    border:      none;
+    padding:     0;
+    white-space: pre;
+  }
+
+  /* Output / console blocks */
+  pre.bg-light,
+  .r-output pre {
+    background-color: var(--optsldp-light-bg);
+    border:           1px solid var(--optsldp-border);
+    border-radius:    var(--optsldp-radius);
+    color:            #2c3e50;
+    font-size:        0.83rem;
+    padding:          0.9rem 1.1rem;
+  }
+
+  /* Knitr #> comment prefix — mute the colour slightly */
+  code .co { color: #8fa8c0; }
+
+  /* ------------------------------------------------------------------
+     4.7  TABLES
+     ------------------------------------------------------------------ */
+  table {
+    border-collapse: collapse;
+    width:           100%;
+    margin-bottom:   1.4rem;
+    font-size:       0.9rem;
+  }
+
+  thead th {
+    background-color: var(--optsldp-primary);
+    color:            #ffffff;
+    font-weight:      600;
+    padding:          0.6rem 0.9rem;
+    text-align:       left;
+    border:           none;
+    font-size:        0.83rem;
+    letter-spacing:   0.03em;
+    text-transform:   uppercase;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--optsldp-border);
+    transition:    background-color var(--optsldp-transition);
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody tr:nth-child(even) { background-color: var(--optsldp-light-bg); }
+
+  tbody tr:hover { background-color: rgba(58, 160, 255, 0.08); }
+
+  tbody td {
+    padding:     0.55rem 0.9rem;
+    vertical-align: top;
+    color:       #1a2735;
+  }
+
+  /* ------------------------------------------------------------------
+     4.8  REFERENCE FUNCTION CARDS
+     ------------------------------------------------------------------ */
+  .ref-index .col-md-9 h2 {
+    font-size:     1rem;
+    font-weight:   600;
+    color:         var(--optsldp-primary);
+    margin-top:    0;
+    margin-bottom: 0.1rem;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .ref-index .col-md-9 .ref-description {
+    color:     var(--optsldp-text-muted);
+    font-size: 0.875rem;
+  }
+
+  /* Function name pill badge on reference page */
+  .function-header .badge {
+    background-color: var(--optsldp-secondary);
+    color:            #ffffff;
+    font-family:      "Fira Code", monospace;
+    font-size:        0.78rem;
+    padding:          0.3em 0.65em;
+    border-radius:    4px;
+    font-weight:      500;
+  }
+
+  /* ------------------------------------------------------------------
+     4.9  ALERT / CALLOUT BOXES (used in vignettes)
+     ------------------------------------------------------------------ */
+  .alert-info {
+    background-color: rgba(58, 160, 255, 0.10);
+    border-left:      4px solid var(--optsldp-secondary);
+    border-radius:    var(--optsldp-radius);
+    color:            #1a2735;
+    padding:          0.85rem 1.1rem;
+  }
+
+  .alert-warning {
+    background-color: rgba(255, 193, 7, 0.12);
+    border-left:      4px solid #ffc107;
+    border-radius:    var(--optsldp-radius);
+    color:            #1a2735;
+    padding:          0.85rem 1.1rem;
+  }
+
+  .alert-success {
+    background-color: rgba(126, 217, 87, 0.15);
+    border-left:      4px solid var(--optsldp-success);
+    border-radius:    var(--optsldp-radius);
+    color:            #1a2735;
+    padding:          0.85rem 1.1rem;
+  }
+
+  /* ------------------------------------------------------------------
+     4.10  FOOTER
+     ------------------------------------------------------------------ */
+  footer {
+    background-color: var(--optsldp-light-bg);
+    border-top:       2px solid var(--optsldp-border);
+    color:            var(--optsldp-text-muted);
+    font-size:        0.82rem;
+    padding:          1.4rem 0;
+    margin-top:       3rem;
+  }
+
+  footer a { color: var(--optsldp-secondary); }
+  footer a:hover { color: var(--optsldp-primary); }
+
+  /* ------------------------------------------------------------------
+     4.11  HOME PAGE HERO (README rendered on pkgdown home)
+     ------------------------------------------------------------------ */
+  /* Logo on home page — constrain and centre */
+  .contents img[src$="logo.png"],
+  .template-home img[src$="logo.png"] {
+    display:    block;
+    max-width:  360px;
+    width:      100%;
+    margin:     1.5rem auto 2rem;
+  }
+
+  /* Package title on home page */
+  .template-home h1:first-child {
+    font-size:   2.4rem;
+    font-weight: 700;
+    color:       var(--optsldp-primary);
+    text-align:  center;
+    margin-top:  0.5rem;
+  }
+
+  /* Badge row (GitHub Actions badges) */
+  .template-home p:has(img[src*="badge"]) {
+    text-align: center;
+    margin:     0.8rem 0 1.5rem;
+  }
+
+  /* ------------------------------------------------------------------
+     4.12  VIGNETTE / ARTICLE PAGES
+     ------------------------------------------------------------------ */
+  .template-article .contents {
+    max-width: 860px;
+  }
+
+  /* Section number prefix — the TOC anchor spans */
+  .contents .header-section-number {
+    color:       var(--optsldp-text-muted);
+    font-weight: 400;
+    margin-right: 0.3em;
+  }
+
+  /* MathJax display equations — add breathing room */
+  mjx-container[display="true"] {
+    margin:    1.2em 0;
+    overflow-x: auto;         /* horizontal scroll on narrow screens */
+  }
+
+  /* Equation labels (AMS numbering) */
+  mjx-container[display="true"] .MJX-TEX {
+    font-size: 1.05em;
+  }
+
+  /* ------------------------------------------------------------------
+     4.13  SCROLLBAR (Webkit / Blink)
+     ------------------------------------------------------------------ */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--optsldp-light-bg); }
+  ::-webkit-scrollbar-thumb {
+    background:    var(--optsldp-border);
+    border-radius: 4px;
+    transition:    background var(--optsldp-transition);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--optsldp-text-muted); }
+
+  /* ------------------------------------------------------------------
+     4.14  RESPONSIVE ADJUSTMENTS
+     ------------------------------------------------------------------ */
+  @media (max-width: 768px) {
+    h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.25rem; }
+
+    div.sourceCode,
+    pre.sourceCode { font-size: 0.78rem; padding: 0.8rem; }
+
+    .template-home h1:first-child { font-size: 1.75rem; }
+  }
+
+  @media (max-width: 480px) {
+    body  { font-size: 15px; }
+    table { font-size: 0.82rem; }
+    thead th { padding: 0.45rem 0.6rem; }
+    tbody td  { padding: 0.4rem  0.6rem; }
+  }
+</style>
+
+
+<!-- ============================================================
+     5. COPY-TO-CLIPBOARD BUTTON
+     Appended to every <div class="sourceCode"> block after the
+     DOM is ready. Uses the Clipboard API with a graceful fallback.
+     The button is positioned top-right inside the code block.
+     ============================================================ -->
+<script>
+(function () {
+  "use strict";
+
+  /* Inline SVG icons */
+  var SVG_COPY = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+  var SVG_TICK = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+  /* Button styles — injected once as a <style> element */
+  var btnStyle = document.createElement("style");
+  btnStyle.textContent = [
+    ".optsldp-copy-btn {",
+    "  position: absolute;",
+    "  top: 0.45rem;",
+    "  right: 0.45rem;",
+    "  background: rgba(255,255,255,0.08);",
+    "  border: 1px solid rgba(205,217,229,0.25);",
+    "  border-radius: 4px;",
+    "  color: #8fa8c0;",
+    "  cursor: pointer;",
+    "  padding: 0.28rem 0.42rem;",
+    "  line-height: 1;",
+    "  display: flex;",
+    "  align-items: center;",
+    "  gap: 0.3rem;",
+    "  font-family: 'Inter', sans-serif;",
+    "  font-size: 0.72rem;",
+    "  font-weight: 500;",
+    "  opacity: 0;",
+    "  transition: opacity 0.18s ease, background 0.18s ease, color 0.18s ease;",
+    "  z-index: 10;",
+    "}",
+    ".optsldp-copy-btn.copied {",
+    "  color: #7ED957;",
+    "  border-color: rgba(126,217,87,0.4);",
+    "  background: rgba(126,217,87,0.12);",
+    "}",
+    "div.sourceCode:hover .optsldp-copy-btn,",
+    "pre.sourceCode:hover .optsldp-copy-btn {",
+    "  opacity: 1;",
+    "}"
+  ].join("\n");
+  document.head.appendChild(btnStyle);
+
+  /* Attach buttons once DOM is ready */
+  function attachCopyButtons() {
+    var blocks = document.querySelectorAll("div.sourceCode, pre.sourceCode");
+    blocks.forEach(function (block) {
+      if (block.querySelector(".optsldp-copy-btn")) return;  /* idempotent */
+
+      var btn = document.createElement("button");
+      btn.className    = "optsldp-copy-btn";
+      btn.title        = "Copy code";
+      btn.setAttribute("aria-label", "Copy code to clipboard");
+      btn.innerHTML    = SVG_COPY + "<span>Copy</span>";
+
+      btn.addEventListener("click", function () {
+        /* Grab text content: prefer <code> child, fall back to block */
+        var codeEl = block.querySelector("code");
+        var text   = (codeEl || block).innerText;
+
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(function () {
+            showCopied(btn);
+          }).catch(function () {
+            legacyCopy(text, btn);
+          });
+        } else {
+          legacyCopy(text, btn);
+        }
+      });
+
+      block.appendChild(btn);
+    });
+  }
+
+  function showCopied(btn) {
+    btn.innerHTML = SVG_TICK + "<span>Copied</span>";
+    btn.classList.add("copied");
+    setTimeout(function () {
+      btn.innerHTML = SVG_COPY + "<span>Copy</span>";
+      btn.classList.remove("copied");
+    }, 1800);
+  }
+
+  function legacyCopy(text, btn) {
+    var ta = document.createElement("textarea");
+    ta.value     = text;
+    ta.style.position = "fixed";
+    ta.style.opacity  = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      showCopied(btn);
+    } catch (e) { /* silent fail */ }
+    document.body.removeChild(ta);
+  }
+
+  /* Run on DOMContentLoaded; also re-run after pkgdown navigation */
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", attachCopyButtons);
+  } else {
+    attachCopyButtons();
+  }
+
+  /* MutationObserver: catch blocks injected by pkgdown's SPA routing */
+  var observer = new MutationObserver(function (mutations) {
+    var shouldRun = mutations.some(function (m) {
+      return Array.from(m.addedNodes).some(function (n) {
+        return n.nodeType === 1 &&
+          (n.classList.contains("sourceCode") ||
+           n.querySelector && n.querySelector(".sourceCode"));
+      });
+    });
+    if (shouldRun) { attachCopyButtons(); }
+  });
+  observer.observe(document.body || document.documentElement, {
+    childList: true,
+    subtree:   true
+  });
+}());
+</script>

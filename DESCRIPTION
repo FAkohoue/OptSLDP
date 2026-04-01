@@ -1,0 +1,44 @@
+Package: OptSLDP
+Title: OptSLDP: An Optimized Selective Linkage Disequilibrium Pruning Pipeline
+Version: 0.1.0
+Authors@R: person("Félicien", "Akohoue", role = c("aut", "cre"),
+    email = "akohoue.f@gmail.com")
+Description: Implements OptSLDP, an optimized and extended version of the
+    Selective Linkage Disequilibrium Pruning (SLDP) pipeline for genomic
+    prediction panel construction. OptSLDP improves on the original SLDP
+    algorithm (Zhu et al., 2023) by introducing chunked memory-safe genotype
+    reading, explicit per-chromosome garbage collection, multi-trait union
+    protection, and covariate-adjusted marginal screening. Supports three input
+    formats (numeric dosage, HapMap, VCF), three candidate selection modes
+    (p-value, z-score, PVE), positional and LD-based expansion of protected
+    marker sets, and chromosome-wise background pruning. Scales automatically
+    from small panels (in-memory) to whole-genome sequencing data with more than
+    10 million SNPs via a GDS/SNPRelate disk-backed backend. References:
+    Zhu et al. (2023) <doi:10.1186/s12711-023-00843-w>;
+    Akohoue et al. (2026) <doi:10.1007/s00122-026-05159-z>.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.1.0)
+Imports:
+    data.table (>= 1.14.0),
+    parallel,
+    stats
+Suggests:
+    SNPRelate (>= 1.26.0),
+    gdsfmt (>= 1.28.0),
+    VariantAnnotation,
+    SummarizedExperiment,
+    GenomeInfoDb,
+    Biostrings,
+    S4Vectors,
+    BiocManager,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://FAkohoue.github.io/OptSLDP, https://github.com/FAkohoue/OptSLDP
+BugReports: https://github.com/FAkohoue/OptSLDP/issues

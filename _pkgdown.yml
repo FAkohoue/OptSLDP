@@ -1,0 +1,106 @@
+url: https://FAkohoue.github.io/OptSLDP/
+
+template:
+  bootstrap: 5
+  math-rendering: mathjax
+  includes:
+    in_header: pkgdown/extra_head.html
+  bslib:
+    primary:      "#0C4C80"
+    secondary:    "#3AA0FF"
+    success:      "#7ED957"
+    base_font:    { google: "Inter" }
+    heading_font: { google: "Inter" }
+    code_font:    { google: "Fira Code" }
+
+favicon: pkgdown/assets/favicon.ico
+
+home:
+  title: "OptSLDP — Optimized Selective Linkage Disequilibrium Pruning"
+  description: >
+    An optimized and extended Selective Linkage Disequilibrium Pruning (SLDP)
+    pipeline for genomic prediction panel construction. Supports multi-trait
+    union protection, covariate-adjusted marginal screening, chunked
+    memory-safe genotype reading, and automatic scaling from small in-memory
+    panels to whole-genome sequencing datasets with > 10 million SNPs.
+
+authors:
+  Félicien Akohoue:
+    href: https://github.com/FAkohoue
+
+navbar:
+  structure:
+    left:  [home, reference, articles, news]
+    right: [github]
+  components:
+    github:
+      icon: fab fa-github
+      href: https://github.com/FAkohoue/OptSLDP
+      aria-label: GitHub repository
+
+reference:
+  - title: "Main pipeline"
+    desc: >
+      End-to-end SLDP workflow. Two files in, one pruned genotype file out.
+    contents:
+      - run_sldp
+      - extract_final_geno
+
+  - title: "Input / output"
+    desc: >
+      Readers for numeric dosage, HapMap, and VCF genotype formats;
+      phenotype reader with multi-trait and sample-alignment support;
+      writers for numeric dosage and HapMap output; pruning report writer.
+    contents:
+      - read_genotype
+      - read_numeric_genotype
+      - read_hapmap_genotype
+      - read_vcf_genotype
+      - read_phenotype
+      - write_numeric_genotype
+      - write_hapmap_genotype
+      - write_pruning_report
+
+  - title: "Quality control"
+    desc: >
+      Minor allele frequency computation and filtering; high-LD pre-pruning
+      to remove near-duplicate markers before the main pipeline.
+    contents:
+      - compute_maf
+      - filter_snps_by_maf
+      - preprune_high_ld
+
+  - title: "Screening and candidate selection"
+    desc: >
+      Marginal SNP screening with optional covariate adjustment; three
+      candidate selection modes (p-value, effect size, hybrid).
+    contents:
+      - compute_screening_stats
+      - select_candidate_snps
+
+  - title: "LD computation and pruning"
+    desc: >
+      Scale-aware pairwise r² computation; important-SNP expansion by
+      positional window and LD neighbourhood; background LD pruning.
+    contents:
+      - compute_r2_subset
+      - find_ld_neighbors
+      - expand_important_snps
+      - prune_background_snps
+
+  - title: "Example data"
+    desc: >
+      Synthetic dataset for demonstrating and testing the pipeline.
+      Contains genotype matrix, phenotype vectors, GWAS results, and
+      ground-truth QTN tables for 40 SNPs and 50 samples.
+    contents:
+      - example_optsldp
+
+articles:
+  - title: "Get started"
+    navbar: "Get started"
+    contents:
+      - OptSLDP-introduction
+
+news:
+  - one_page: true
