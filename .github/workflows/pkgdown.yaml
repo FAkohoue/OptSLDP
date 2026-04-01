@@ -70,9 +70,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # Point the Bioconductor installer at release 3.19 (R 4.4 compatible).
-      # Update this whenever a new Bioconductor release ships.
-      BIOC_VERSION: "3.19"
       # Disable interactive prompts from R package installers
       RENV_CONFIG_MEMOIZE_SYMLINKS: "FALSE"
       R_KEEP_PKG_SOURCE: "yes"
@@ -109,7 +106,7 @@ jobs:
         with:
           r-version:          "release"
           use-public-rspm:    true
-          extra-repositories: "https://bioconductor.org/packages/3.19/bioc"
+          extra-repositories: "https://bioconductor.org/packages/release/bioc"
 
       # --------------------------------------------------------------------------
       # 4. Cache system libraries (apt packages)
@@ -149,12 +146,14 @@ jobs:
       #    packages. SNPRelate, gdsfmt, VariantAnnotation, and the
       #    other Bioc Suggests must be installed manually via
       #    BiocManager before the main dependency install runs.
+      #    BiocManager::install() with no version argument auto-detects
+      #    the correct Bioconductor release for the installed R version.
       # --------------------------------------------------------------------------
       - name: Cache R packages
         uses: actions/cache@v4
         with:
           path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}-bioc-${{ env.BIOC_VERSION }}
+          key: ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}-bioc
           restore-keys: |
             ${{ runner.os }}-r-${{ hashFiles('DESCRIPTION') }}-
             ${{ runner.os }}-r-
@@ -166,9 +165,8 @@ jobs:
             install.packages("BiocManager")
 
           BiocManager::install(
-            version = Sys.getenv("BIOC_VERSION"),
-            ask     = FALSE,
-            update  = FALSE
+            ask    = FALSE,
+            update = FALSE
           )
 
           # Core Bioconductor Suggests from DESCRIPTION

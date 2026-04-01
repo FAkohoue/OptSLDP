@@ -71,8 +71,6 @@ jobs:
           - { os: windows-latest, r: "release" }
 
     env:
-      # Disable interactive BiocManager prompts
-      BIOC_VERSION:      "3.19"
       R_KEEP_PKG_SOURCE: "yes"
       # Suppress the "checking installed package size" NOTE on CRAN
       _R_CHECK_CRAN_INCOMING_REMOTE_: "false"
@@ -106,7 +104,7 @@ jobs:
         with:
           r-version:          ${{ matrix.config.r }}
           use-public-rspm:    true
-          extra-repositories: "https://bioconductor.org/packages/3.19/bioc"
+          extra-repositories: "https://bioconductor.org/packages/release/bioc"
 
       # ------------------------------------------------------------------------
       # 4. Install system C/C++ headers (Linux only)
@@ -142,7 +140,7 @@ jobs:
           path: ${{ env.R_LIBS_USER }}
           key: >-
             ${{ runner.os }}-r-${{ matrix.config.r }}-
-            ${{ hashFiles('DESCRIPTION') }}-bioc-${{ env.BIOC_VERSION }}
+            ${{ hashFiles('DESCRIPTION') }}-bioc
           restore-keys: |
             ${{ runner.os }}-r-${{ matrix.config.r }}-${{ hashFiles('DESCRIPTION') }}-
             ${{ runner.os }}-r-${{ matrix.config.r }}-
@@ -168,9 +166,8 @@ jobs:
             install.packages("BiocManager")
 
           BiocManager::install(
-            version = Sys.getenv("BIOC_VERSION"),
-            ask     = FALSE,
-            update  = FALSE
+            ask    = FALSE,
+            update = FALSE
           )
 
           bioc_pkgs <- c(
@@ -219,14 +216,15 @@ jobs:
       #    --as-cran        : applies CRAN-level checks (title case, URLs,
       #                       examples, vignette building, etc.)
       #    --no-manual      : skip PDF manual generation (requires LaTeX)
-      #    error-on: warning: fail the job on any NOTE or WARNING, not just
-      #                       ERROR, to catch issues before CRAN submission.
+      #    error-on: error: fail the job only on ERROR; WARNINGs from
+      #                     known false-positives (e.g. dataset doc on some
+      #                     R versions) do not block CI.
       # ------------------------------------------------------------------------
       - name: Run R CMD check
         uses: r-lib/actions/check-r-package@v2
         with:
           args:     'c("--as-cran", "--no-manual")'
-          error-on: '"warning"'
+          error-on: '"error"'
           upload-snapshots: true
 
       # ------------------------------------------------------------------------

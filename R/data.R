@@ -137,4 +137,3 @@
 #'   `compute_screening_stats()` for marginal SNP screening,
 #'   `select_candidate_snps()` for candidate selection modes.
 "example_optsldp"
-NULL
