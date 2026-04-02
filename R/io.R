@@ -601,8 +601,7 @@ read_vcf_genotype <- function(file,
   on.exit(if (file.exists(gds_path)) unlink(gds_path), add = TRUE)
 
   if (verbose)
-    message("[read_vcf_genotype] Converting VCF -> GDS (streaming, ",
-            n_cores, " thread(s)) ...")
+    message("[read_vcf_genotype] Converting VCF -> GDS (streaming) ...")
 
   SNPRelate::snpgdsVCF2GDS(
     vcf.fn      = vcf_to_use,
@@ -647,13 +646,14 @@ read_vcf_genotype <- function(file,
 
   chroms <- unique(snp_info$CHR)
   for (chr in chroms) {
-    idx     <- which(snp_info$CHR == chr)
-    dosage  <- SNPRelate::snpgdsGetGeno(
+    idx    <- which(snp_info$CHR == chr)
+    dosage <- .snprelate_call(
+      SNPRelate::snpgdsGetGeno,
       genofile,
-      snp.id     = snp_id_raw[idx],
-      with.id    = FALSE,
-      num.thread = n_cores,
-      verbose    = FALSE
+      snp.id  = snp_id_raw[idx],
+      with.id = FALSE,
+      verbose = FALSE,
+      n_cores = n_cores
     )
     geno_mat[idx, ] <- dosage
     rm(dosage); gc(FALSE)

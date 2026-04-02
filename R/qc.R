@@ -30,8 +30,7 @@ compute_maf <- function(geno_mat, ctx = NULL) {
     freq <- SNPRelate::snpgdsSNPRateFreq(
       ctx$genofile,
       with.id    = TRUE,
-      verbose    = FALSE,
-      num.thread = ctx$n_cores
+      verbose    = FALSE
     )
     af  <- freq$AlleleFreq
     maf <- pmin(af, 1 - af)

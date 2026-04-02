@@ -79,7 +79,7 @@
 #' @keywords internal
 #' @noRd
 .write_gds <- function(geno_mat, snp_info, gds_path,
-                        n_cores = 1L, verbose = TRUE) {
+                       n_cores = 1L, verbose = TRUE) {
   .assert_packages("SNPRelate")
   .report_progress(
     "Writing ", nrow(geno_mat), " SNPs to GDS: ", gds_path,
@@ -182,15 +182,16 @@
 #' @keywords internal
 #' @noRd
 .compute_r2_gds <- function(genofile, snp_ids,
-                             method  = "corr",
-                             n_cores = 1L) {
-  ld_obj  <- SNPRelate::snpgdsLDMat(
+                            method  = "corr",
+                            n_cores = 1L) {
+  ld_obj  <- .snprelate_call(
+    SNPRelate::snpgdsLDMat,
     genofile,
     snp.id   = snp_ids,
     method   = method,
-    slide    = -1L,          # compute full matrix, not sliding window
+    slide    = -1L,
     verbose  = FALSE,
-    num.thread = n_cores
+    n_cores  = n_cores
   )
   r2_mat          <- ld_obj$LD^2
   rownames(r2_mat) <- ld_obj$snp.id
@@ -215,7 +216,7 @@
 #' @keywords internal
 #' @noRd
 .compute_r2_focal_gds <- function(genofile, focal_id, all_ids,
-                                   n_cores = 1L) {
+                                  n_cores = 1L) {
   r2_mat <- .compute_r2_gds(genofile, all_ids, n_cores = n_cores)
   r2_mat[focal_id, , drop = TRUE]
 }
@@ -237,18 +238,19 @@
 #' @keywords internal
 #' @noRd
 .filter_maf_gds <- function(genofile,
-                             maf_min     = 0.05,
-                             missing_max = 0.10,
-                             n_cores     = 1L) {
-  freq <- SNPRelate::snpgdsSNPRateFreq(
+                            maf_min     = 0.05,
+                            missing_max = 0.10,
+                            n_cores     = 1L) {
+  freq <- .snprelate_call(
+    SNPRelate::snpgdsSNPRateFreq,
     genofile,
-    with.id    = TRUE,
-    verbose    = FALSE,
-    num.thread = n_cores
+    with.id  = TRUE,
+    verbose  = FALSE,
+    n_cores  = n_cores
   )
   keep <- freq$AlleleFreq >= maf_min &
-          freq$AlleleFreq <= (1 - maf_min) &
-          freq$MissingRate <= missing_max
+    freq$AlleleFreq <= (1 - maf_min) &
+    freq$MissingRate <= missing_max
   freq$snp.id[keep]
 }
 
@@ -271,18 +273,19 @@
 #' @keywords internal
 #' @noRd
 .preprune_chr_gds <- function(genofile, snp_ids,
-                               r2_pre       = 0.99,
-                               slide_max_bp = 500000L,
-                               n_cores      = 1L) {
-  kept <- SNPRelate::snpgdsLDpruning(
+                              r2_pre       = 0.99,
+                              slide_max_bp = 500000L,
+                              n_cores      = 1L) {
+  kept <- .snprelate_call(
+    SNPRelate::snpgdsLDpruning,
     genofile,
-    snp.id          = snp_ids,
-    ld.threshold    = sqrt(r2_pre),   # snpgdsPruneLD uses |r|, not r^2
-    slide.max.bp    = slide_max_bp,
-    slide.max.n     = -1L,
-    missing.rate    = 0.10,
-    num.thread      = n_cores,
-    verbose         = FALSE
+    snp.id       = snp_ids,
+    ld.threshold = sqrt(r2_pre),
+    slide.max.bp = slide_max_bp,
+    slide.max.n  = -1L,
+    missing.rate = 0.10,
+    verbose      = FALSE,
+    n_cores      = n_cores
   )
   kept
 }
@@ -302,18 +305,19 @@
 #' @keywords internal
 #' @noRd
 .prune_background_chr_gds <- function(genofile, snp_ids,
-                                       r2_genome    = 0.80,
-                                       slide_max_bp = 1000000L,
-                                       n_cores      = 1L) {
-  SNPRelate::snpgdsLDpruning(
+                                      r2_genome    = 0.80,
+                                      slide_max_bp = 1000000L,
+                                      n_cores      = 1L) {
+  .snprelate_call(
+    SNPRelate::snpgdsLDpruning,
     genofile,
-    snp.id          = snp_ids,
-    ld.threshold    = sqrt(r2_genome),
-    slide.max.bp    = slide_max_bp,
-    slide.max.n     = -1L,
-    missing.rate    = 0.10,
-    num.thread      = n_cores,
-    verbose         = FALSE
+    snp.id       = snp_ids,
+    ld.threshold = sqrt(r2_genome),
+    slide.max.bp = slide_max_bp,
+    slide.max.n  = -1L,
+    missing.rate = 0.10,
+    verbose      = FALSE,
+    n_cores      = n_cores
   )
 }
 
