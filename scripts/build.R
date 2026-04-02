@@ -1,9 +1,9 @@
 # Build helper script for OptSLDP
 
 #remove.packages("fs")
-install.packages("fs")
+#install.packages("fs")
 
-# remove.packages("OptSLDP")
+remove.packages("OptSLDP")
 
 # install.packages(
 #   c("rlang", "fs", "cli", "glue", "lifecycle",
@@ -30,6 +30,11 @@ pkgdown::build_site()
 
 
 devtools::build()
+
+
+curl::nslookup("cloud.r-project.org")
+
+download.file("https://cloud.r-project.org", tempfile(), quiet = FALSE)
 
 # Run from your package root in R
 file.create("docs/.nojekyll")
