@@ -20,7 +20,7 @@ jobs:
       matrix:
         config:
           - { os: ubuntu-latest,  r: "release" }
-          - { os: ubuntu-latest,   r: "devel" }
+          - { os: ubuntu-latest,  r: "devel"   }
           - { os: macos-latest,   r: "release" }
           - { os: windows-latest, r: "release" }
 
@@ -42,7 +42,6 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
-          extra-repositories: "https://bioconductor.org/packages/release/bioc"
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
@@ -76,19 +75,41 @@ jobs:
           if (length(missing_pkgs) > 0L)
             BiocManager::install(missing_pkgs, ask = FALSE, update = FALSE)
 
-      - name: Delete stale pak lockfile (Linux only)
+      # Linux: install directly without pak to avoid lockfile conflicts
+      # with pre-installed Bioconductor packages
+      - name: Install CRAN dependencies (Linux)
         if: runner.os == 'Linux'
-        run: rm -f .github/pkg.lock
+        shell: Rscript {0}
+        run: |
+          pkgs <- c("rcmdcheck", "data.table", "knitr", "rmarkdown", "testthat")
+          missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1L), quietly = TRUE)]
+          if (length(missing))
+            install.packages(missing, repos = "https://cloud.r-project.org")
+          install.packages(".", repos = NULL, type = "source",
+                           INSTALL_opts = "--no-docs --no-multiarch --no-build-vignettes")
 
-      - name: Install CRAN dependencies
+      # macOS and Windows: use setup-r-dependencies (no Bioc conflict)
+      - name: Install CRAN dependencies (macOS/Windows)
+        if: runner.os != 'Linux'
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
             any::rcmdcheck
           needs: check
-          cache-version: 2
 
-      - name: Run R CMD check
+      - name: Run R CMD check (Linux)
+        if: runner.os == 'Linux'
+        shell: Rscript {0}
+        run: |
+          result <- rcmdcheck::rcmdcheck(
+            args      = c("--as-cran", "--no-manual"),
+            error_on  = "error",
+            check_dir = "check"
+          )
+          print(result)
+
+      - name: Run R CMD check (macOS/Windows)
+        if: runner.os != 'Linux'
         uses: r-lib/actions/check-r-package@v2
         with:
           args: 'c("--as-cran", "--no-manual")'
