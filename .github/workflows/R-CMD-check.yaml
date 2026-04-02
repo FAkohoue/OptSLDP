@@ -1,11 +1,3 @@
-# ==============================================================================
-# .github/workflows/R-CMD-check.yaml
-# Stable R CMD check workflow for OptSLDP
-# - removes manual package-library cache to avoid pak plan failures
-# - keeps setup-r-dependencies for CRAN packages
-# - keeps explicit Bioconductor installation on Linux
-# ==============================================================================
-
 name: R-CMD-check
 
 on:
@@ -72,35 +64,20 @@ jobs:
         if: runner.os == 'Linux'
         shell: Rscript {0}
         run: |
-          if (!requireNamespace("BiocManager", quietly = TRUE)) {
+          if (!requireNamespace("BiocManager", quietly = TRUE))
             install.packages("BiocManager", repos = "https://cloud.r-project.org")
-          }
-
-          bioc_pkgs <- c(
-            "SNPRelate",
-            "gdsfmt",
-            "VariantAnnotation",
-            "SummarizedExperiment",
-            "GenomeInfoDb",
-            "Biostrings",
-            "S4Vectors"
-          )
-
+          bioc_pkgs <- c("SNPRelate", "gdsfmt", "VariantAnnotation",
+                         "SummarizedExperiment", "GenomeInfoDb",
+                         "Biostrings", "S4Vectors")
           missing_pkgs <- bioc_pkgs[
             !vapply(bioc_pkgs, requireNamespace, logical(1L), quietly = TRUE)
           ]
+          if (length(missing_pkgs) > 0L)
+            BiocManager::install(missing_pkgs, ask = FALSE, update = FALSE)
 
-          if (length(missing_pkgs) > 0L) {
-            message("Installing Bioconductor packages: ",
-                    paste(missing_pkgs, collapse = ", "))
-            BiocManager::install(
-              missing_pkgs,
-              ask = FALSE,
-              update = FALSE
-            )
-          } else {
-            message("All Bioconductor packages already installed.")
-          }
+      - name: Delete stale pak lockfile (Linux only)
+        if: runner.os == 'Linux'
+        run: rm -f .github/pkg.lock
 
       - name: Install CRAN dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
@@ -108,6 +85,7 @@ jobs:
           extra-packages: |
             any::rcmdcheck
           needs: check
+          cache-version: 2
 
       - name: Run R CMD check
         uses: r-lib/actions/check-r-package@v2
@@ -120,7 +98,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: >-
-            check-results-${{ matrix.config.os }}-r${{ matrix.config.r }}
+          name: check-results-${{ matrix.config.os }}-r${{ matrix.config.r }}
           path: check
           retention-days: 7
