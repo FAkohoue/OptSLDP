@@ -1,14 +1,14 @@
 # Build helper script for OptSLDP
 
-# remove.packages("fs")
-# install.packages("fs")
+#remove.packages("fs")
+install.packages("fs")
 
 # remove.packages("OptSLDP")
 
-install.packages(
-  c("rlang", "fs", "cli", "glue", "lifecycle",
-    "roxygen2", "devtools", "pkgdown")
-)
+# install.packages(
+#   c("rlang", "fs", "cli", "glue", "lifecycle",
+#     "roxygen2", "devtools", "pkgdown")
+# )
 
 
 # 1. Regenerate example data (fixes the 'example_sldp' vs 'example_optsldp' mismatch)
@@ -35,6 +35,8 @@ devtools::build()
 file.create("docs/.nojekyll")
 
 list.files("docs", all.files = TRUE)
+
+file.exists(".github/pkg.lock")
 
 # Create the correct folder
 dir.create("pkgdown/favicon", showWarnings = FALSE)

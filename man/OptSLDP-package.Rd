@@ -155,6 +155,7 @@ populations. \emph{Theoretical and Applied Genetics}, \strong{139}, 52.
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://FAkohoue.github.io/OptSLDP}
   \item \url{https://github.com/FAkohoue/OptSLDP}
   \item Report bugs at \url{https://github.com/FAkohoue/OptSLDP/issues}
 }
