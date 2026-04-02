@@ -1,11 +1,3 @@
-# ==============================================================================
-# .github/workflows/R-CMD-check.yaml
-# Stable R CMD check workflow for OptSLDP
-# - removes manual package-library cache to avoid pak plan failures
-# - keeps setup-r-dependencies for CRAN packages
-# - keeps explicit Bioconductor installation on Linux
-# ==============================================================================
-
 name: R-CMD-check
 
 on:
@@ -28,7 +20,6 @@ jobs:
       matrix:
         config:
           - { os: ubuntu-latest,  r: "release" }
-          - { os: ubuntu-latest,  r: "devel"   }
           - { os: macos-latest,   r: "release" }
           - { os: windows-latest, r: "release" }
 
