@@ -1,5 +1,53 @@
 # Build helper script for OptSLDP
 
+install.packages("rsvg")
+rsvg::rsvg_png(
+  "man/figures/logo.svg",
+  "man/figures/logo.png"
+)
+
+library(magick)
+
+# Load your logo
+img <- image_read("man/figures/logo.png")
+
+# Create favicon sizes
+sizes <- c(16, 32, 48, 64, 180, 192, 512)
+
+dir.create("pkgdown/assets", recursive = TRUE, showWarnings = FALSE)
+
+for (s in sizes) {
+  resized <- image_resize(img, paste0(s, "x", s))
+  image_write(resized, paste0("pkgdown/assets/favicon-", s, ".png"))
+}
+
+# Create favicon.ico (multi-size)
+ico <- image_resize(img, "64x64")
+image_write(ico, "pkgdown/assets/favicon.ico")
+
+writeLines(
+  c(
+    '<link rel="icon" type="image/svg+xml" href="logo.svg">',
+    '<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">',
+    '<link rel="apple-touch-icon" href="favicon-180.png">'
+  ),
+  "pkgdown/assets/favicon.html"
+)
+
+
+# Create the correct folder
+dir.create("pkgdown/favicon", showWarnings = FALSE)
+
+# Copy all favicon files from assets/ to favicon/
+file.copy(
+  from      = list.files("pkgdown/assets", full.names = TRUE),
+  to        = "pkgdown/favicon/",
+  overwrite = TRUE
+)
+
+list.files("pkgdown/favicon")
+
+
 #remove.packages("fs")
 #install.packages("fs")
 
@@ -32,31 +80,5 @@ pkgdown::build_site()
 devtools::build()
 
 
-curl::nslookup("cloud.r-project.org")
-
-download.file("https://cloud.r-project.org", tempfile(), quiet = FALSE)
-
-# Run from your package root in R
-file.create("docs/.nojekyll")
-
-list.files("docs", all.files = TRUE)
-
-file.exists(".github/pkg.lock")
-
-# Create the correct folder
-dir.create("pkgdown/favicon", showWarnings = FALSE)
-
-# Copy all favicon files from assets/ to favicon/
-file.copy(
-  from      = list.files("pkgdown/assets", full.names = TRUE),
-  to        = "pkgdown/favicon/",
-  overwrite = TRUE
-)
-
-list.files("pkgdown/favicon")
-
-
-# if (!require("BiocManager", quietly = TRUE))
-#   install.packages("BiocManager")
-#
-# BiocManager::install("VariantAnnotation")
+options(pkgdown.internet = FALSE)
+pkgdown::build_site()
