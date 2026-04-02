@@ -15,4 +15,6 @@
 #' @importFrom data.table 'setorder'
 #' @importFrom data.table 'rbindlist'
 #' @importFrom data.table 'copy'
+#' @importFrom tools file_ext
+#' @importFrom tools file_path_sans_ext
 NULL

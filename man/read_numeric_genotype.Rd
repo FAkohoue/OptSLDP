@@ -9,7 +9,9 @@ read_numeric_genotype(
   sep = NULL,
   check_names = FALSE,
   chunk_rows = 50000L,
-  chunk_threshold = 200000L
+  chunk_threshold = 200000L,
+  clean_malformed = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -23,6 +25,11 @@ read_numeric_genotype(
 
 \item{chunk_threshold}{Row count above which chunked reading is used.
 Default \verb{200 000}.}
+
+\item{clean_malformed}{Logical. If \code{TRUE}, stream-clean the file before
+reading by removing lines with unexpected column counts. Default \code{FALSE}.}
+
+\item{verbose}{Print progress messages when cleaning. Default \code{TRUE}.}
 }
 \value{
 Named list: \code{snp_info}, \code{geno_mat}, \code{sample_ids}, \code{format}.

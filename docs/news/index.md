@@ -2,6 +2,62 @@
 
 ## OptSLDP 0.1.0
 
+### New features
+
+- **[`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md)**
+  – new exported function that stream-cleans any accepted genotype file
+  (numeric CSV, HapMap, VCF / bgzipped VCF) by removing lines whose
+  delimiter-separated column count does not match the header. Separator
+  is auto-detected from the file extension. Works in 50,000-line chunks
+  so memory use is bounded regardless of file size.
+
+- **[`run_sldp()`](https://FAkohoue.github.io/OptSLDP/reference/run_sldp.md)
+  gains `clean_malformed` parameter** – set `TRUE` to automatically
+  clean the genotype file before reading, for all accepted formats. The
+  cleaned temporary file is deleted automatically after the reading step
+  completes. Required for VCF output from NGSEP and other callers that
+  embed `/` characters in FORMAT fields.
+
+- **[`read_vcf_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_vcf_genotype.md)
+  auto-routes large VCF files** – files with more than
+  `vcf_snp_threshold` SNPs (default 50,000) bypass `VariantAnnotation`
+  and use
+  [`SNPRelate::snpgdsVCF2GDS()`](https://rdrr.io/pkg/SNPRelate/man/snpgdsVCF2GDS.html)
+  for streaming conversion to GDS, then extract dosage
+  chromosome-by-chromosome. This avoids the
+  `scanVcf: cannot allocate memory` error that occurs with
+  multi-million-SNP VCF files. The threshold and GDS directory are
+  user-configurable.
+
+- **`n_cores` forwarded to `snpgdsGetGeno()`** – parallelises dosage
+  extraction in the large-VCF SNPRelate path.
+
+### Bug fixes
+
+- [`read_vcf_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_vcf_genotype.md)
+  now uses [`gzfile()`](https://rdrr.io/r/base/connections.html) instead
+  of [`file()`](https://rdrr.io/r/base/connections.html) for the
+  SNP-count probe, correctly reading bgzipped VCF files.
+
+- [`read_numeric_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_numeric_genotype.md)
+  and
+  [`read_hapmap_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_hapmap_genotype.md)
+  accept `clean_malformed` and apply
+  [`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md)
+  before parsing.
+
+### Internal
+
+- `tools` added to `Imports` (used by
+  [`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md)
+  for temporary file naming via
+  [`tools::file_path_sans_ext()`](https://rdrr.io/r/tools/fileutils.html)
+  and [`tools::file_ext()`](https://rdrr.io/r/tools/fileutils.html)).
+
+------------------------------------------------------------------------
+
+## OptSLDP 0.1.0
+
 First public release of `OptSLDP`, an optimized and extended
 implementation of the Selective Linkage Disequilibrium Pruning (SLDP)
 pipeline for genomic prediction panel construction. The package builds

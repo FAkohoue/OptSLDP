@@ -854,6 +854,50 @@ cat("QTN1 IDs:", paste(qtn1[qtn1 %in% final_snps], collapse = ", "), "\n")
 
 ------------------------------------------------------------------------
 
+## Input cleaning
+
+Some variant callers (e.g. NGSEP) produce genotype files with malformed
+lines – rows where embedded delimiter characters cause the column count
+to exceed the header.
+[`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md)
+removes such lines by streaming through the file in 50 000-line chunks:
+
+- For VCF files, comment lines (`#`) are passed through and the column
+  count is established from the `#CHROM` header line.
+- For numeric CSV and HapMap files, the first line is the header.
+- The separator is detected automatically from the file extension (`vcf`
+  / `hmp` -\> tab, everything else -\> comma).
+
+``` r
+# Standalone use: clean before analysis
+clean_genotype_file(
+  file_in  = "raw_ngsep.vcf.gz",
+  file_out = "cleaned.vcf.gz",
+  verbose  = TRUE
+)
+```
+
+Alternatively, pass `clean_malformed = TRUE` to
+[`run_sldp()`](https://FAkohoue.github.io/OptSLDP/reference/run_sldp.md)
+and the cleaning step is integrated automatically as part of step 1:
+
+``` r
+res <- run_sldp(
+  genotype_file   = "raw_ngsep.vcf.gz",
+  phenotype_file  = "phenotype.csv",
+  output_file     = "panel_pruned.csv",
+  format          = "vcf",
+  clean_malformed = TRUE,   # cleans any format: vcf, hapmap, numeric
+  trait_col       = c("BL", "NBL"),
+  mode            = "A",
+  pval_threshold  = 0.05,
+  verbose         = TRUE
+)
+```
+
+The cleaned temporary file is deleted automatically after reading
+completes. No manual steps are required.
+
 ## The `run_sldp()` pipeline
 
 [`run_sldp()`](https://FAkohoue.github.io/OptSLDP/reference/run_sldp.md)
@@ -865,7 +909,7 @@ is handled internally.
 
 | Step | Action | Key parameters |
 |----|----|----|
-| 1 | Read genotype file | `format` |
+| 1 | Read genotype file (optionally clean malformed lines) | `format`, `clean_malformed` |
 | 2 | Read and align phenotype | `sample_col`, `trait_col`, `covar_cols` |
 | 3 | Select scale strategy | `scale_strategy`, `gds_dir`, `n_cores` |
 | 4 | MAF filter | `maf_threshold` |

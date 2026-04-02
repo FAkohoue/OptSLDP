@@ -67,6 +67,8 @@ devtools::document()
 
 # 3. Install, test and check
 devtools::install()
+#devtools::install(build_vignettes = FALSE, force = TRUE)
+
 devtools::test()
 devtools::check()
 

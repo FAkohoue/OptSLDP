@@ -17,6 +17,9 @@ numeric dosage and HapMap output; pruning report writer.
 
 - [`read_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_genotype.md)
   : Dispatch genotype reading by format
+- [`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md)
+  : Clean a malformed genotype file by removing lines with wrong column
+  counts
 - [`read_numeric_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_numeric_genotype.md)
   : Read numeric dosage genotype data
 - [`read_hapmap_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_hapmap_genotype.md)

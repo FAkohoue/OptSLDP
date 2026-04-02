@@ -53,6 +53,7 @@ reference:
       writers for numeric dosage and HapMap output; pruning report writer.
     contents:
       - read_genotype
+      - clean_genotype_file
       - read_numeric_genotype
       - read_hapmap_genotype
       - read_vcf_genotype

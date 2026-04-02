@@ -23,7 +23,7 @@
 #' @keywords internal
 #' @noRd
 .build_gds_context <- function(snp_info, geno_mat, strategy,
-                                gds_dir, n_cores, verbose) {
+                               gds_dir, n_cores, verbose) {
   ctx <- list(strategy = strategy, geno_mat = geno_mat,
               genofile = NULL, gds_path = NULL, n_cores = n_cores)
 
@@ -116,6 +116,12 @@
 #'   `1 000 000`.
 #' @param stats_output_file   Optional path for pruning statistics CSV.
 #' @param summary_output_file Optional path for plain-text summary.
+#' @param clean_malformed     If `TRUE`, stream-clean the genotype file
+#'   before reading by removing any lines whose column count does not
+#'   match the header.  Works for all accepted formats (numeric CSV,
+#'   HapMap, VCF).  Needed for files from NGSEP and other callers that
+#'   produce malformed lines.  Adds one extra streaming pass.
+#'   Default `FALSE`.
 #' @param verbose             Print timestamped progress. Default `TRUE`.
 #'
 #' @return A named list:
@@ -180,7 +186,7 @@ run_sldp <- function(genotype_file,
                      scale_strategy         = NULL,
                      gds_dir                = tempdir(),
                      n_cores                = max(1L,
-                                               parallel::detectCores() - 1L),
+                                                  parallel::detectCores() - 1L),
                      maf_threshold          = 0.05,
                      preprune_large         = TRUE,
                      preprune_r2            = 0.99,
@@ -195,6 +201,7 @@ run_sldp <- function(genotype_file,
                      slide_max_bp           = 1000000L,
                      stats_output_file      = NULL,
                      summary_output_file    = NULL,
+                     clean_malformed        = FALSE,
                      verbose                = TRUE) {
 
   format          <- match.arg(format)
@@ -210,13 +217,38 @@ run_sldp <- function(genotype_file,
 
   # -- Step 1: Read genotypes --------------------------------------------------
   .report_progress("[1] Reading genotype data ...", verbose = verbose)
-  g        <- read_genotype(genotype_file, format = format)
+  fmt_resolved <- if (identical(format, "auto")) {
+    lower <- tolower(genotype_file)
+    if (grepl("\\.vcf(\\.gz)?$", lower)) "vcf"
+    else if (grepl("\\.hmp(\\.txt)?$", lower) ||
+             grepl("hapmap", lower)) "hapmap"
+    else "numeric"
+  } else format
+
+  g        <- if (identical(fmt_resolved, "vcf")) {
+    read_vcf_genotype(
+      file              = genotype_file,
+      clean_malformed   = clean_malformed,
+      gds_dir           = gds_dir,
+      n_cores           = n_cores,
+      verbose           = verbose
+    )
+  } else {
+    if (identical(fmt_resolved, "numeric"))
+      read_numeric_genotype(genotype_file,
+                            clean_malformed = clean_malformed,
+                            verbose = verbose)
+    else
+      read_hapmap_genotype(genotype_file,
+                           clean_malformed = clean_malformed,
+                           verbose = verbose)
+  }
   data.table::setDT(g$snp_info)
   snp_info <- g$snp_info
   geno_mat <- g$geno_mat
   n0       <- nrow(snp_info)
   pruning_stats <- .append_pruning_stat(pruning_stats, "input", n0, n0,
-                                         paste0("format=", g$format))
+                                        paste0("format=", g$format))
   .report_progress("    Loaded ", n0, " SNPs x ", ncol(geno_mat), " samples",
                    verbose = verbose)
 
@@ -251,8 +283,8 @@ run_sldp <- function(genotype_file,
   strategy <- .select_strategy(n0, user_strategy = scale_strategy)
   .report_progress("[3] Scale strategy: ", strategy, verbose = verbose)
   ctx      <- .build_gds_context(snp_info, geno_mat, strategy,
-                                  gds_dir = gds_dir, n_cores = n_cores,
-                                  verbose = verbose)
+                                 gds_dir = gds_dir, n_cores = n_cores,
+                                 verbose = verbose)
   geno_mat <- ctx$geno_mat   # NULL for GDS path
 
   # -- Step 4: MAF filter -----------------------------------------------------
@@ -260,14 +292,14 @@ run_sldp <- function(genotype_file,
                    verbose = verbose)
   n_before <- n0
   maf_res  <- filter_snps_by_maf(snp_info, geno_mat,
-                                  maf_threshold = maf_threshold, ctx = ctx)
+                                 maf_threshold = maf_threshold, ctx = ctx)
   data.table::setDT(maf_res$snp_info)
   snp_info     <- maf_res$snp_info
   geno_mat     <- maf_res$geno_mat
   ctx$geno_mat <- geno_mat
   pruning_stats <- .append_pruning_stat(pruning_stats, "maf_filter",
-                                         n_before, nrow(snp_info),
-                                         paste0("maf>=", maf_threshold))
+                                        n_before, nrow(snp_info),
+                                        paste0("maf>=", maf_threshold))
   .report_progress("    After MAF filter: ", nrow(snp_info), " SNPs",
                    verbose = verbose)
 
@@ -277,16 +309,16 @@ run_sldp <- function(genotype_file,
                      verbose = verbose)
     n_before <- nrow(snp_info)
     pre      <- preprune_high_ld(snp_info, geno_mat,
-                                  r2_pre = preprune_r2,
-                                  slide_max_bp = slide_max_bp,
-                                  ctx = ctx, verbose = verbose)
+                                 r2_pre = preprune_r2,
+                                 slide_max_bp = slide_max_bp,
+                                 ctx = ctx, verbose = verbose)
     data.table::setDT(pre$snp_info)
     snp_info     <- pre$snp_info
     geno_mat     <- pre$geno_mat
     ctx$geno_mat <- geno_mat
     pruning_stats <- .append_pruning_stat(pruning_stats, "preprune_high_ld",
-                                           n_before, nrow(snp_info),
-                                           paste0("r2>=", preprune_r2))
+                                          n_before, nrow(snp_info),
+                                          paste0("r2>=", preprune_r2))
     .report_progress("    After pre-pruning: ", nrow(snp_info), " SNPs",
                      verbose = verbose)
   }

@@ -141,13 +141,13 @@
 <p>Install from GitHub with vignettes (recommended):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Install without vignettes for a faster install:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -156,11 +156,11 @@
 <code class="sourceCode R"><span><span class="co"># VCF input support (Bioconductor)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
 <span>                       <span class="st">"SummarizedExperiment"</span>, <span class="st">"Biostrings"</span>, <span class="st">"S4Vectors"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Large-panel GDS backend (&gt; 2 M SNPs, Bioconductor)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Bioconductor packages are not installed automatically by <code>remotes</code> — run the blocks above once if you need VCF support or plan to work with whole-genome panels.</p>
 <hr>
 </div>
@@ -514,8 +514,10 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <tbody>
 <tr>
 <td>1</td>
-<td>Read genotype file</td>
-<td><code>format</code></td>
+<td>Read genotype file (optionally clean malformed lines)</td>
+<td>
+<code>format</code>, <code>clean_malformed</code>
+</td>
 </tr>
 <tr>
 <td>2</td>
@@ -695,7 +697,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 </tr>
 <tr>
 <td><code><a href="reference/read_vcf_genotype.html">read_vcf_genotype()</a></code></td>
-<td>Read VCF/VCF.gz via VariantAnnotation.</td>
+<td>Read VCF/VCF.gz. Auto-routes large files through SNPRelate.</td>
 </tr>
 <tr>
 <td><code><a href="reference/read_phenotype.html">read_phenotype()</a></code></td>
@@ -712,6 +714,10 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <tr>
 <td><code><a href="reference/write_pruning_report.html">write_pruning_report()</a></code></td>
 <td>Write pruning statistics CSV and optional plain-text summary.</td>
+</tr>
+<tr>
+<td><code><a href="reference/clean_genotype_file.html">clean_genotype_file()</a></code></td>
+<td>Stream-clean any genotype file (numeric CSV, HapMap, VCF) by removing lines with unexpected column counts.</td>
 </tr>
 </tbody>
 </table>
@@ -897,6 +903,25 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <p><code>gc(FALSE)</code> is called immediately after each chunk is released (in both genotype readers) and after each chromosome’s <span class="math inline">\(r^2\)</span> matrix is released (in <code><a href="reference/preprune_high_ld.html">preprune_high_ld()</a></code> and <code><a href="reference/prune_background_snps.html">prune_background_snps()</a></code>). This prevents stale allocations from accumulating across 20–30 chromosomes in the greedy pruning loops and makes peak RSS track the working set more closely.</p>
 </div>
 <div class="section level3">
+<h3 id="malformed-line-cleaning">Malformed line cleaning<a class="anchor" aria-label="anchor" href="#malformed-line-cleaning"></a>
+</h3>
+<p>Set <code>clean_malformed = TRUE</code> in <code><a href="reference/run_sldp.html">run_sldp()</a></code> or call <code><a href="reference/clean_genotype_file.html">clean_genotype_file()</a></code> directly to remove any lines whose delimiter-separated column count does not match the header. The function auto-detects the separator (tab for VCF/HapMap, comma for numeric CSV), streams in 50 000-line chunks, and writes the cleaned file to a temporary path that is deleted automatically after reading. This is required for VCF files produced by NGSEP and some other callers that embed <code>/</code> characters in FORMAT fields.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Standalone use</span></span>
+<span><span class="fu"><a href="reference/clean_genotype_file.html">clean_genotype_file</a></span><span class="op">(</span></span>
+<span>  file_in  <span class="op">=</span> <span class="st">"raw.vcf.gz"</span>,</span>
+<span>  file_out <span class="op">=</span> <span class="st">"cleaned.vcf.gz"</span>,</span>
+<span>  verbose  <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Integrated into the pipeline</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_sldp.html">run_sldp</a></span><span class="op">(</span></span>
+<span>  genotype_file   <span class="op">=</span> <span class="st">"raw.vcf.gz"</span>,</span>
+<span>  clean_malformed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
 <h3 id="parallelism">Parallelism<a class="anchor" aria-label="anchor" href="#parallelism"></a>
 </h3>
 <p>The <code>n_cores</code> parameter is passed to SNPRelate functions in the GDS strategy (<code>snpgdsLDMat</code>, <code>snpgdsPruneLD</code>, <code>snpgdsSNPRateFreq</code>). Marginal regressions in the screening step are single-threaded because each regression is very fast and the overhead of parallelising 40 K–200 K short <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> calls generally exceeds the gain.</p>
@@ -909,7 +934,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <p>Full documentation, function reference, and tutorials are available at:</p>
 <p><a href="https://FAkohoue.github.io/OptSLDP/" class="uri">https://FAkohoue.github.io/OptSLDP/</a></p>
 <p>To read the vignette after installation:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"OptSLDP-introduction"</span>, package <span class="op">=</span> <span class="st">"OptSLDP"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -919,7 +944,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <p>If you use <code>OptSLDP</code> in published research, please cite:</p>
 <pre><code>Akohoue, F. (2026).
 OptSLDP: An Optimized Selective Linkage Disequilibrium Pruning Pipeline for Genomic Prediction.
-R package version 0.2.0.
+R package version 0.1.0.
 https://github.com/FAkohoue/OptSLDP</code></pre>
 <p>You should also cite the underlying methodological papers:</p>
 <pre><code>Zhu D, Zhao Y, Zhang R, Wu H, Cai G, Wu Z, Wang Y, Hu X (2023).

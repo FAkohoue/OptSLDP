@@ -900,7 +900,7 @@ test_that("write_pruning_report creates summary file when requested", {
   tmp_csv  <- tempfile(fileext = ".csv")
   tmp_txt  <- tempfile(fileext = ".txt")
   write_pruning_report(.make_pruning_stats(), stats_file = tmp_csv,
-                        summary_file = tmp_txt)
+                       summary_file = tmp_txt)
   expect_true(file.exists(tmp_txt))
   lines <- readLines(tmp_txt)
   expect_gt(length(lines), 0L)
@@ -916,13 +916,88 @@ test_that("write_pruning_report no summary_file: only CSV produced", {
 
 
 # ==============================================================================
+# 13b.  clean_genotype_file()
+# ==============================================================================
+
+test_that("clean_genotype_file passes through a clean numeric CSV unchanged", {
+  f   <- system.file("extdata", "example_genotypes_numeric.csv", package = "OptSLDP")
+  tmp <- tempfile(fileext = ".csv")
+  res <- clean_genotype_file(file_in = f, file_out = tmp, sep = ",", verbose = FALSE)
+  expect_true(file.exists(tmp))
+  original <- readLines(f)
+  cleaned  <- readLines(tmp)
+  # Header + all data rows must be preserved
+  expect_equal(length(cleaned), length(original))
+  expect_equal(cleaned[1], original[1])
+  file.remove(tmp)
+})
+
+test_that("clean_genotype_file returns named integer vector total/removed/kept", {
+  f   <- system.file("extdata", "example_genotypes_numeric.csv", package = "OptSLDP")
+  tmp <- tempfile(fileext = ".csv")
+  res <- clean_genotype_file(file_in = f, file_out = tmp, sep = ",", verbose = FALSE)
+  expect_type(res, "integer")
+  expect_named(res, c("total", "removed", "kept"))
+  expect_equal(res[["removed"]], 0L)
+  expect_equal(res[["total"]],   res[["kept"]])
+  file.remove(tmp)
+})
+
+test_that("clean_genotype_file removes a line with wrong column count", {
+  # Write a mini numeric CSV with one malformed line
+  tmp_in  <- tempfile(fileext = ".csv")
+  tmp_out <- tempfile(fileext = ".csv")
+  writeLines(c(
+    "SNP,CHR,POS,REF,ALT,S1,S2,S3",
+    "SNP1,1,1000,A,T,0,1,2",       # correct: 8 columns
+    "SNP2,1,2000,G,C,1,extra,0,2", # malformed: 9 columns
+    "SNP3,1,3000,C,T,2,0,1"        # correct: 8 columns
+  ), tmp_in)
+  res <- clean_genotype_file(file_in = tmp_in, file_out = tmp_out,
+                             sep = ",", verbose = FALSE)
+  expect_equal(res[["removed"]], 1L)
+  expect_equal(res[["kept"]],    2L)
+  kept_lines <- readLines(tmp_out)
+  # Header + 2 good data lines
+  expect_equal(length(kept_lines), 3L)
+  file.remove(tmp_in, tmp_out)
+})
+
+test_that("clean_genotype_file auto-detects tab separator for VCF extension", {
+  f   <- system.file("extdata", "example_genotypes.vcf", package = "OptSLDP")
+  if (!nzchar(f)) skip("VCF example file not found")
+  tmp <- tempfile(fileext = ".vcf")
+  res <- clean_genotype_file(file_in = f, file_out = tmp, sep = "auto",
+                             verbose = FALSE)
+  expect_equal(res[["removed"]], 0L)
+  file.remove(tmp)
+})
+
+test_that("read_numeric_genotype clean_malformed=TRUE runs without error", {
+  gf  <- system.file("extdata", "example_genotypes_numeric.csv", package = "OptSLDP")
+  tmp <- tempfile(fileext = ".csv")
+  expect_no_error(
+    read_numeric_genotype(gf, clean_malformed = TRUE, verbose = FALSE)
+  )
+})
+
+test_that("read_numeric_genotype clean_malformed=TRUE gives same SNPs as FALSE", {
+  gf   <- system.file("extdata", "example_genotypes_numeric.csv", package = "OptSLDP")
+  res_f <- read_numeric_genotype(gf, clean_malformed = FALSE, verbose = FALSE)
+  res_t <- read_numeric_genotype(gf, clean_malformed = TRUE,  verbose = FALSE)
+  expect_equal(res_f$snp_info$SNP, res_t$snp_info$SNP)
+  expect_equal(res_f$geno_mat,     res_t$geno_mat, ignore_attr = TRUE)
+})
+
+
+# ==============================================================================
 # 14.  run_sldp()  — integration tests using package example data
 # ==============================================================================
 
 geno_file  <- system.file("extdata","example_genotypes_numeric.csv",
-                            package = "OptSLDP")
+                          package = "OptSLDP")
 pheno_file <- system.file("extdata","example_phenotype.csv",
-                            package = "OptSLDP")
+                          package = "OptSLDP")
 
 # ---------- 14.1 Single-trait mode A -----------------------------------------
 
@@ -939,9 +1014,9 @@ test_that("run_sldp mode A completes and returns the expected list elements", {
     verbose        = FALSE
   )
   expected_elements <- c("final_snp_info","final_geno_mat","screening_stats",
-                          "candidate_snps_per_trait","candidate_snps",
-                          "important_snps","background_retained",
-                          "pruning_stats","output_file","scale_strategy")
+                         "candidate_snps_per_trait","candidate_snps",
+                         "important_snps","background_retained",
+                         "pruning_stats","output_file","scale_strategy")
   expect_true(all(expected_elements %in% names(res)))
 })
 
@@ -1201,7 +1276,7 @@ test_that("run_sldp with preprune_large=TRUE produces fewer or equal SNPs than F
     verbose        = FALSE
   )
   res_pre <- do.call(run_sldp, c(args_base, list(preprune_large = TRUE,
-                                                   preprune_r2   = 0.99)))
+                                                 preprune_r2   = 0.99)))
   res_no  <- do.call(run_sldp, c(args_base, list(preprune_large = FALSE)))
   # Pre-pruning should not increase the final panel size
   expect_lte(nrow(res_pre$final_snp_info), nrow(res_no$final_snp_info))
@@ -1268,7 +1343,7 @@ test_that("run_sldp multi-trait: all per-trait candidates are in union", {
     verbose        = FALSE
   )
   all_trait_cands <- union(res$candidate_snps_per_trait$Trait1,
-                            res$candidate_snps_per_trait$Trait2)
+                           res$candidate_snps_per_trait$Trait2)
   expect_true(all(all_trait_cands %in% res$candidate_snps))
 })
 
@@ -1304,7 +1379,7 @@ test_that("run_sldp multi-trait: final panel >= single-trait panel (union is non
   )
   res_single <- do.call(run_sldp, c(args_base, list(trait_col = "Trait1")))
   res_multi  <- do.call(run_sldp, c(args_base,
-                                     list(trait_col = c("Trait1","Trait2"))))
+                                    list(trait_col = c("Trait1","Trait2"))))
   expect_gte(nrow(res_multi$final_snp_info), nrow(res_single$final_snp_info))
 })
 

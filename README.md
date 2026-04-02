@@ -440,7 +440,7 @@ The 12 steps executed by `run_sldp()` in order:
 
 | Step | Action | Key parameter(s) |
 |------|--------|-----------------|
-| 1 | Read genotype file | `format` |
+| 1 | Read genotype file (optionally clean malformed lines) | `format`, `clean_malformed` |
 | 2 | Read phenotype, align samples | `sample_col`, `trait_col`, `covar_cols` |
 | 3 | Select scale strategy, write GDS if needed | `scale_strategy`, `gds_dir`, `n_cores` |
 | 4 | MAF filter | `maf_threshold` |
@@ -529,11 +529,12 @@ res <- run_sldp(
 | `read_genotype()` | Auto-dispatch genotype reader. |
 | `read_numeric_genotype()` | Read numeric dosage CSV/TXT. Chunked for files > 200 K rows. |
 | `read_hapmap_genotype()` | Read HapMap format. Chunked for large files. |
-| `read_vcf_genotype()` | Read VCF/VCF.gz via VariantAnnotation. |
+| `read_vcf_genotype()` | Read VCF/VCF.gz. Auto-routes large files through SNPRelate. |
 | `read_phenotype()` | Read phenotype file, align to genotype samples, return vector (single trait) or matrix (multi-trait). |
 | `write_numeric_genotype()` | Write numeric dosage CSV. |
 | `write_hapmap_genotype()` | Write HapMap format. |
 | `write_pruning_report()` | Write pruning statistics CSV and optional plain-text summary. |
+| `clean_genotype_file()` | Stream-clean any genotype file (numeric CSV, HapMap, VCF) by removing lines with unexpected column counts. |
 
 ### Quality control
 
@@ -608,6 +609,26 @@ genotype readers) and after each chromosome's $r^2$ matrix is released (in
 allocations from accumulating across 20–30 chromosomes in the greedy pruning
 loops and makes peak RSS track the working set more closely.
 
+### Malformed line cleaning
+
+Set `clean_malformed = TRUE` in `run_sldp()` or call `clean_genotype_file()` directly to remove any lines whose delimiter-separated column count does not match the header. The function auto-detects the separator (tab for VCF/HapMap, comma for numeric CSV), streams in 50 000-line chunks, and writes the cleaned file to a temporary path that is deleted automatically after reading. This is required for VCF files produced by NGSEP and some other callers that embed `/` characters in FORMAT fields.
+
+```r
+# Standalone use
+clean_genotype_file(
+  file_in  = "raw.vcf.gz",
+  file_out = "cleaned.vcf.gz",
+  verbose  = TRUE
+)
+
+# Integrated into the pipeline
+res <- run_sldp(
+  genotype_file   = "raw.vcf.gz",
+  clean_malformed = TRUE,
+  ...
+)
+```
+
 ### Parallelism
 
 The `n_cores` parameter is passed to SNPRelate functions in the GDS strategy
@@ -639,7 +660,7 @@ If you use `OptSLDP` in published research, please cite:
 ```
 Akohoue, F. (2026).
 OptSLDP: An Optimized Selective Linkage Disequilibrium Pruning Pipeline for Genomic Prediction.
-R package version 0.2.0.
+R package version 0.1.0.
 https://github.com/FAkohoue/OptSLDP
 ```
 

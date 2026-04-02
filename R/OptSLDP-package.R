@@ -83,6 +83,7 @@
 #'
 #' | Function | Role |
 #' |---|---|
+#' | `clean_genotype_file()` | Remove malformed lines from any genotype file |
 #' | `compute_maf()` | Compute allele frequency and MAF |
 #' | `filter_snps_by_maf()` | Remove SNPs below MAF threshold |
 #' | `preprune_high_ld()` | Chromosome-wise removal of near-duplicate SNPs |

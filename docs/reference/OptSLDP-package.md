@@ -93,6 +93,7 @@ report.
 |  |  |
 |----|----|
 | Function | Role |
+| [`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md) | Remove malformed lines from any genotype file |
 | [`compute_maf()`](https://FAkohoue.github.io/OptSLDP/reference/compute_maf.md) | Compute allele frequency and MAF |
 | [`filter_snps_by_maf()`](https://FAkohoue.github.io/OptSLDP/reference/filter_snps_by_maf.md) | Remove SNPs below MAF threshold |
 | [`preprune_high_ld()`](https://FAkohoue.github.io/OptSLDP/reference/preprune_high_ld.md) | Chromosome-wise removal of near-duplicate SNPs |

@@ -5,9 +5,9 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet"><link href="../deps/Fira_Code-0.4.10/font.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Read VCF genotype data — read_vcf_genotype"><meta name="description" content="Reads a VCF or bgzipped VCF using VariantAnnotation and converts GT
-fields (phased or unphased) to additive dosage (0/1/2)."><meta property="og:description" content="Reads a VCF or bgzipped VCF using VariantAnnotation and converts GT
-fields (phased or unphased) to additive dosage (0/1/2)."><meta property="og:image" content="https://FAkohoue.github.io/OptSLDP/logo.svg"></head><body><p>
+</script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet"><link href="../deps/Fira_Code-0.4.10/font.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Read VCF genotype data — read_vcf_genotype"><meta name="description" content="Reads a VCF or bgzipped VCF and converts GT fields to additive dosage
+(0/1/2/NA).  Three code paths are selected automatically:"><meta property="og:description" content="Reads a VCF or bgzipped VCF and converts GT fields to additive dosage
+(0/1/2/NA).  Three code paths are selected automatically:"><meta property="og:image" content="https://FAkohoue.github.io/OptSLDP/logo.svg"></head><body><p>
 
 
 
@@ -59,13 +59,20 @@ fields (phased or unphased) to additive dosage (0/1/2)."><meta property="og:imag
     </div>
 
     <div class="ref-description section level2">
-    <p>Reads a VCF or bgzipped VCF using <code>VariantAnnotation</code> and converts GT
-fields (phased or unphased) to additive dosage (0/1/2).</p>
+    <p>Reads a VCF or bgzipped VCF and converts GT fields to additive dosage
+(0/1/2/NA).  Three code paths are selected automatically:</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">read_vcf_genotype</span><span class="op">(</span><span class="va">file</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">read_vcf_genotype</span><span class="op">(</span></span>
+<span>  <span class="va">file</span>,</span>
+<span>  vcf_snp_threshold <span class="op">=</span> <span class="fl">50000L</span>,</span>
+<span>  clean_malformed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  gds_dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  n_cores <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -75,10 +82,50 @@ fields (phased or unphased) to additive dosage (0/1/2).</p>
 <dl><dt id="arg-file">file<a class="anchor" aria-label="anchor" href="#arg-file"></a></dt>
 <dd><p>Path to a <code>.vcf</code> or <code>.vcf.gz</code> file.</p></dd>
 
+
+<dt id="arg-vcf-snp-threshold">vcf_snp_threshold<a class="anchor" aria-label="anchor" href="#arg-vcf-snp-threshold"></a></dt>
+<dd><p>SNP count above which the SNPRelate path is used.
+Default <code>50000</code>.</p></dd>
+
+
+<dt id="arg-clean-malformed">clean_malformed<a class="anchor" aria-label="anchor" href="#arg-clean-malformed"></a></dt>
+<dd><p>Logical.  If <code>TRUE</code>, stream-clean the VCF before
+conversion to remove lines with unexpected column counts.  Adds one extra
+pass over the file but is necessary for some variant callers.
+Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-gds-dir">gds_dir<a class="anchor" aria-label="anchor" href="#arg-gds-dir"></a></dt>
+<dd><p>Directory for the temporary GDS file.
+Default <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>.</p></dd>
+
+
+<dt id="arg-n-cores">n_cores<a class="anchor" aria-label="anchor" href="#arg-n-cores"></a></dt>
+<dd><p>Threads passed to <code>snpgdsGetGeno()</code>.  Default <code>1</code>.</p></dd>
+
+
+<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
+<dd><p>Print progress messages. Default <code>TRUE</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Named list: <code>snp_info</code>, <code>geno_mat</code>, <code>sample_ids</code>, <code>format</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+
+<ul><li><p><strong>Small VCF</strong> (fewer than <code>vcf_snp_threshold</code> variants, default 50 000):
+<code><a href="https://rdrr.io/pkg/VariantAnnotation/man/readVcf-methods.html" class="external-link">VariantAnnotation::readVcf()</a></code> in one pass.</p></li>
+<li><p><strong>Large VCF</strong> (&gt;= <code>vcf_snp_threshold</code> variants): <code><a href="https://rdrr.io/pkg/SNPRelate/man/snpgdsVCF2GDS.html" class="external-link">SNPRelate::snpgdsVCF2GDS()</a></code>
+streams the VCF to a temporary GDS binary, then dosage is read
+chromosome-by-chromosome.  Peak RAM equals one chromosome of dosage.</p></li>
+<li><p><strong>Large VCF with cleaning</strong> (<code>clean_malformed = TRUE</code>): before conversion,
+<code>clean_vcf()</code> streams through the file and removes any lines whose
+tab-column count does not match the header.  Needed for VCF files from
+NGSEP and some other callers that embed "/" in FORMAT fields.</p></li>
+</ul><p>All three paths return an identical list so the rest of the pipeline is
+unaffected.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

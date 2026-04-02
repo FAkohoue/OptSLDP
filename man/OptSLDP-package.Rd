@@ -93,6 +93,7 @@ merge, output writing, and optional pruning-statistics report.
 
 \strong{Quality control}\tabular{ll}{
    Function \tab Role \cr
+   \code{clean_genotype_file()} \tab Remove malformed lines from any genotype file \cr
    \code{compute_maf()} \tab Compute allele frequency and MAF \cr
    \code{filter_snps_by_maf()} \tab Remove SNPs below MAF threshold \cr
    \code{preprune_high_ld()} \tab Chromosome-wise removal of near-duplicate SNPs \cr

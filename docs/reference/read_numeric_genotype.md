@@ -11,7 +11,9 @@ read_numeric_genotype(
   sep = NULL,
   check_names = FALSE,
   chunk_rows = 50000L,
-  chunk_threshold = 200000L
+  chunk_threshold = 200000L,
+  clean_malformed = FALSE,
+  verbose = TRUE
 )
 ```
 
@@ -36,6 +38,15 @@ read_numeric_genotype(
 - chunk_threshold:
 
   Row count above which chunked reading is used. Default `200 000`.
+
+- clean_malformed:
+
+  Logical. If `TRUE`, stream-clean the file before reading by removing
+  lines with unexpected column counts. Default `FALSE`.
+
+- verbose:
+
+  Print progress messages when cleaning. Default `TRUE`.
 
 ## Value
 

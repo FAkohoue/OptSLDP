@@ -36,6 +36,7 @@ run_sldp(
   slide_max_bp = 1000000L,
   stats_output_file = NULL,
   summary_output_file = NULL,
+  clean_malformed = FALSE,
   verbose = TRUE
 )
 ```
@@ -152,6 +153,14 @@ run_sldp(
 - summary_output_file:
 
   Optional path for plain-text summary.
+
+- clean_malformed:
+
+  If `TRUE`, stream-clean the genotype file before reading by removing
+  any lines whose column count does not match the header. Works for all
+  accepted formats (numeric CSV, HapMap, VCF). Needed for files from
+  NGSEP and other callers that produce malformed lines. Adds one extra
+  streaming pass. Default `FALSE`.
 
 - verbose:
 

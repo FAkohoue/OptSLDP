@@ -101,6 +101,7 @@ handled automatically.</p>
 <span>  slide_max_bp <span class="op">=</span> <span class="fl">1000000L</span>,</span>
 <span>  stats_output_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  summary_output_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  clean_malformed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -224,6 +225,15 @@ Default <code>max(1, detectCores() - 1)</code>.</p></dd>
 
 <dt id="arg-summary-output-file">summary_output_file<a class="anchor" aria-label="anchor" href="#arg-summary-output-file"></a></dt>
 <dd><p>Optional path for plain-text summary.</p></dd>
+
+
+<dt id="arg-clean-malformed">clean_malformed<a class="anchor" aria-label="anchor" href="#arg-clean-malformed"></a></dt>
+<dd><p>If <code>TRUE</code>, stream-clean the genotype file
+before reading by removing any lines whose column count does not
+match the header.  Works for all accepted formats (numeric CSV,
+HapMap, VCF).  Needed for files from NGSEP and other callers that
+produce malformed lines.  Adds one extra streaming pass.
+Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>

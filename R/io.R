@@ -46,14 +46,14 @@
 #' @keywords internal
 #' @noRd
 .read_dosage_chunked <- function(file, meta_cols,
-                                  sep        = "auto",
-                                  chunk_rows = 50000L,
-                                  na_strings = c("NA", "")) {
+                                 sep        = "auto",
+                                 chunk_rows = 50000L,
+                                 na_strings = c("NA", "")) {
   .assert_packages("data.table")
 
   # -- Pass 1: header scan -- zero data rows read -------------------------------
   hdr        <- data.table::fread(file, sep = sep, nrows = 0L,
-                                   check.names = FALSE, data.table = TRUE)
+                                  check.names = FALSE, data.table = TRUE)
   all_cols   <- names(hdr)
   sample_ids <- setdiff(all_cols, meta_cols)
   n_samples  <- length(sample_ids)
@@ -62,7 +62,7 @@
 
   # Total row count (read first column only -- minimal RAM)
   n_rows <- nrow(data.table::fread(file, sep = sep, select = 1L,
-                                    header = TRUE, data.table = TRUE))
+                                   header = TRUE, data.table = TRUE))
 
   # -- Pre-allocate the full output matrix -------------------------------------
   geno_mat           <- matrix(NA_real_, nrow = n_rows, ncol = n_samples)
@@ -108,7 +108,7 @@
   }
 
   meta_dt <- data.table::rbindlist(meta_list[seq_len(chunk_idx)],
-                                    use.names = TRUE)
+                                   use.names = TRUE)
 
   list(meta       = meta_dt,
        geno_mat   = geno_mat,
@@ -133,24 +133,36 @@
 #' @param chunk_rows      Rows per chunk for the chunked path. Default `50 000`.
 #' @param chunk_threshold Row count above which chunked reading is used.
 #'   Default `200 000`.
+#' @param clean_malformed Logical. If `TRUE`, stream-clean the file before
+#'   reading by removing lines with unexpected column counts. Default `FALSE`.
+#' @param verbose Print progress messages when cleaning. Default `TRUE`.
 #'
 #' @return Named list: `snp_info`, `geno_mat`, `sample_ids`, `format`.
 #' @export
 read_numeric_genotype <- function(file, sep = NULL, check_names = FALSE,
-                                   chunk_rows      = 50000L,
-                                   chunk_threshold = 200000L) {
+                                  chunk_rows       = 50000L,
+                                  chunk_threshold  = 200000L,
+                                  clean_malformed  = FALSE,
+                                  verbose          = TRUE) {
+  if (isTRUE(clean_malformed)) {
+    cleaned <- tempfile(fileext = ".csv")
+    clean_genotype_file(file_in = file, file_out = cleaned,
+                        sep = ",", verbose = verbose)
+    on.exit(if (file.exists(cleaned)) unlink(cleaned), add = TRUE)
+    file <- cleaned
+  }
   .assert_packages("data.table")
   sep_val       <- sep %||% "auto"
   required_cols <- c("SNP", "CHR", "POS", "REF", "ALT")
 
   # Quick row probe (reads only the first column)
   n_rows_probe <- nrow(data.table::fread(file, sep = sep_val, select = 1L,
-                                          header = TRUE, data.table = TRUE))
+                                         header = TRUE, data.table = TRUE))
 
   if (n_rows_probe > chunk_threshold) {
     # -- Chunked path ----------------------------------------------------------
     res        <- .read_dosage_chunked(file, meta_cols = required_cols,
-                                        sep = sep_val, chunk_rows = chunk_rows)
+                                       sep = sep_val, chunk_rows = chunk_rows)
     meta_dt    <- res$meta
     geno_mat   <- res$geno_mat
     sample_ids <- res$sample_ids
@@ -166,7 +178,7 @@ read_numeric_genotype <- function(file, sep = NULL, check_names = FALSE,
   } else {
     # -- Single-pass path ------------------------------------------------------
     dt   <- data.table::fread(file, sep = sep_val, check.names = check_names,
-                               data.table = TRUE)
+                              data.table = TRUE)
     miss <- setdiff(required_cols, names(dt))
     if (length(miss))
       stop("Numeric genotype file missing columns: ",
@@ -208,12 +220,24 @@ read_numeric_genotype <- function(file, sep = NULL, check_names = FALSE,
 #' @param chunk_rows      Rows per chunk for the chunked path. Default `50 000`.
 #' @param chunk_threshold Row count above which chunked reading is used.
 #'   Default `200 000`.
+#' @param clean_malformed Logical. If `TRUE`, stream-clean the file before
+#'   reading by removing lines with unexpected column counts. Default `FALSE`.
+#' @param verbose Print progress messages when cleaning. Default `TRUE`.
 #'
 #' @return Named list: `snp_info`, `geno_mat`, `sample_ids`, `format`.
 #' @export
 read_hapmap_genotype <- function(file,
-                                  chunk_rows      = 50000L,
-                                  chunk_threshold = 200000L) {
+                                 chunk_rows      = 50000L,
+                                 chunk_threshold = 200000L,
+                                 clean_malformed = FALSE,
+                                 verbose         = TRUE) {
+  if (isTRUE(clean_malformed)) {
+    cleaned <- tempfile(fileext = ".hmp.txt")
+    clean_genotype_file(file_in = file, file_out = cleaned,
+                        sep = "\t", verbose = verbose)
+    on.exit(if (file.exists(cleaned)) unlink(cleaned), add = TRUE)
+    file <- cleaned
+  }
   .assert_packages("data.table")
 
   hmp_meta_std <- c("alleles", "chrom", "pos", "strand", "assembly#",
@@ -221,7 +245,7 @@ read_hapmap_genotype <- function(file,
 
   # -- Header scan -------------------------------------------------------------
   hdr       <- data.table::fread(file, nrows = 0L, check.names = FALSE,
-                                  data.table = TRUE)
+                                 data.table = TRUE)
   first_col <- names(hdr)[1L]
   req_hmp   <- c(first_col, "alleles", "chrom", "pos")
   miss      <- setdiff(req_hmp, names(hdr))
@@ -255,7 +279,7 @@ read_hapmap_genotype <- function(file,
   }
 
   n_rows_probe <- nrow(data.table::fread(file, select = 1L, header = TRUE,
-                                          data.table = TRUE))
+                                         data.table = TRUE))
 
   if (n_rows_probe > chunk_threshold) {
     # -- Chunked path ----------------------------------------------------------
@@ -325,61 +349,326 @@ read_hapmap_genotype <- function(file,
 }
 
 
-#' Read VCF genotype data
+#' Clean a malformed genotype file by removing lines with wrong column counts
 #'
-#' Reads a VCF or bgzipped VCF using `VariantAnnotation` and converts GT
-#' fields (phased or unphased) to additive dosage (0/1/2).
+#' Streams through any accepted genotype file format (numeric CSV, HapMap,
+#' VCF / bgzipped VCF) in 50 000-line chunks and writes only lines whose
+#' delimiter-separated column count matches the header to a new output file.
+#' The separator is detected automatically from the file extension and the
+#' first non-comment header line:
 #'
-#' @param file Path to a `.vcf` or `.vcf.gz` file.
-#' @return Named list: `snp_info`, `geno_mat`, `sample_ids`, `format`.
+#' | Format  | Separator |
+#' |---------|-----------|
+#' | VCF     | tab       |
+#' | HapMap  | tab       |
+#' | Numeric | comma     |
+#'
+#' VCF comment lines (starting with `#`) are always passed through unchanged;
+#' the column count is established from the `#CHROM` line.  For numeric and
+#' HapMap files the first line is the header and sets the expected count.
+#'
+#' @param file_in    Path to the input genotype file (plain or `.gz`).
+#' @param file_out   Path for the cleaned output file.  If it ends in `.gz`
+#'   the output is gzip-compressed.
+#' @param sep        Field separator: `","`, `"\t"`, or `"auto"` (default).
+#'   `"auto"` detects from the file extension (`vcf` / `hmp` -> tab,
+#'   everything else -> comma).
+#' @param chunk_size Lines per chunk. Default `50000`.
+#' @param verbose    Print progress every 500 000 data lines. Default `TRUE`.
+#'
+#' @return Invisibly: a named integer vector with elements `total`, `removed`,
+#'   and `kept`.
 #' @export
-read_vcf_genotype <- function(file) {
-  .assert_packages(c("VariantAnnotation", "SummarizedExperiment",
-                     "GenomeInfoDb", "Biostrings", "S4Vectors"))
+clean_genotype_file <- function(file_in, file_out,
+                                sep        = "auto",
+                                chunk_size = 50000L,
+                                verbose    = TRUE) {
 
-  vcf <- VariantAnnotation::readVcf(file)
-  gt  <- VariantAnnotation::geno(vcf)$GT
-  if (is.null(gt))
-    stop("VCF does not contain GT genotype calls.", call. = FALSE)
+  # -- Separator detection ----------------------------------------------------
+  if (identical(sep, "auto")) {
+    lower <- tolower(file_in)
+    sep   <- if (grepl("\\.vcf(\\.gz)?$", lower) ||
+                 grepl("\\.hmp(\\.txt)?(\\.gz)?$", lower) ||
+                 grepl("hapmap", lower)) "\t" else ","
+  }
+  is_vcf <- grepl("\\.vcf(\\.gz)?$", tolower(file_in))
 
-  gt_to_dosage <- function(x) {
-    x <- gsub("\\|", "/", x)
-    vapply(strsplit(x, "/", fixed = TRUE), function(a) {
-      if (length(a) != 2L || any(a %in% c(".", NA_character_))) return(NA_real_)
-      aa <- suppressWarnings(as.integer(a))
-      if (any(is.na(aa))) return(NA_real_)
-      sum(aa)
-    }, numeric(1L))
+  con_in  <- gzfile(file_in, "r")
+  # Use gzfile for .gz output, plain file() otherwise -- fread() cannot read
+  # gz files without R.utils, so non-gz output paths must stay uncompressed.
+  con_out <- if (grepl("\\.gz$", tolower(file_out))) gzfile(file_out, "w") else
+    file(file_out, "w")
+  on.exit({ try(close(con_in),  silent = TRUE)
+    try(close(con_out), silent = TRUE) }, add = TRUE)
+
+  n_total       <- 0L
+  n_removed     <- 0L
+  expected_cols <- NULL   # set from header line
+  header_done   <- FALSE  # for non-VCF: first line is the header
+
+  if (verbose)
+    message("[clean_genotype_file] Streaming ", basename(file_in),
+            " (sep=", if (sep == "\t") "tab" else sep, ") ...")
+
+  repeat {
+    lines <- readLines(con_in, n = chunk_size, warn = FALSE)
+    if (length(lines) == 0L) break
+
+    keep <- character(0L)
+
+    for (ln in lines) {
+
+      # VCF comment / header lines
+      if (is_vcf && startsWith(ln, "#")) {
+        if (startsWith(ln, "#CHROM"))
+          expected_cols <- length(strsplit(ln, sep, fixed = TRUE)[[1L]])
+        keep <- c(keep, ln)
+        next
+      }
+
+      # Non-VCF: first non-comment line is the header
+      if (!is_vcf && !header_done) {
+        expected_cols <- length(strsplit(ln, sep, fixed = TRUE)[[1L]])
+        header_done   <- TRUE
+        keep <- c(keep, ln)
+        next
+      }
+
+      n_total <- n_total + 1L
+
+      if (!is.null(expected_cols)) {
+        n_cols <- length(strsplit(ln, sep, fixed = TRUE)[[1L]])
+        if (n_cols != expected_cols) {
+          n_removed <- n_removed + 1L
+          next
+        }
+      }
+      keep <- c(keep, ln)
+    }
+
+    if (length(keep) > 0L)
+      writeLines(keep, con_out)
+
+    if (verbose && n_total > 0L && n_total %% 500000L < chunk_size)
+      message("  [clean_genotype_file] ", n_total, " SNPs processed, ",
+              n_removed, " removed ...")
   }
 
-  geno_mat <- apply(gt, 2L, gt_to_dosage)
-  if (!is.matrix(geno_mat)) geno_mat <- matrix(geno_mat, ncol = ncol(gt))
+  close(con_in); close(con_out)
 
-  rr      <- SummarizedExperiment::rowRanges(vcf)
-  alt_vec <- vapply(VariantAnnotation::alt(vcf),
-                    function(x) as.character(x[[1L]]), character(1L))
-  snp_ids <- names(rr)
-  empty   <- is.na(snp_ids) | snp_ids == "" | snp_ids == "."
-  if (any(empty))
-    snp_ids[empty] <- paste0(as.character(GenomeInfoDb::seqnames(rr)[empty]),
-                              ":", S4Vectors::start(rr)[empty])
+  if (verbose)
+    message("[clean_genotype_file] Done. Total: ", n_total,
+            " | Removed: ", n_removed,
+            " | Kept: ",    n_total - n_removed)
 
-  snp_info <- data.table::data.table(
-    SNP = as.character(snp_ids),
-    CHR = .normalise_chr(as.character(GenomeInfoDb::seqnames(rr))),
-    POS = as.integer(S4Vectors::start(rr)),
-    REF = as.character(VariantAnnotation::ref(vcf)),
-    ALT = alt_vec
+  invisible(c(total = n_total, removed = n_removed,
+              kept  = n_total - n_removed))
+}
+
+
+#' Read VCF genotype data
+#'
+#' Reads a VCF or bgzipped VCF and converts GT fields to additive dosage
+#' (0/1/2/NA).  Three code paths are selected automatically:
+#'
+#' * **Small VCF** (fewer than `vcf_snp_threshold` variants, default 50 000):
+#'   `VariantAnnotation::readVcf()` in one pass.
+#' * **Large VCF** (>= `vcf_snp_threshold` variants): `SNPRelate::snpgdsVCF2GDS()`
+#'   streams the VCF to a temporary GDS binary, then dosage is read
+#'   chromosome-by-chromosome.  Peak RAM equals one chromosome of dosage.
+#' * **Large VCF with cleaning** (`clean_malformed = TRUE`): before conversion,
+#'   `clean_vcf()` streams through the file and removes any lines whose
+#'   tab-column count does not match the header.  Needed for VCF files from
+#'   NGSEP and some other callers that embed "/" in FORMAT fields.
+#'
+#' All three paths return an identical list so the rest of the pipeline is
+#' unaffected.
+#'
+#' @param file              Path to a `.vcf` or `.vcf.gz` file.
+#' @param vcf_snp_threshold SNP count above which the SNPRelate path is used.
+#'   Default `50000`.
+#' @param clean_malformed   Logical.  If `TRUE`, stream-clean the VCF before
+#'   conversion to remove lines with unexpected column counts.  Adds one extra
+#'   pass over the file but is necessary for some variant callers.
+#'   Default `FALSE`.
+#' @param gds_dir           Directory for the temporary GDS file.
+#'   Default `tempdir()`.
+#' @param n_cores           Threads passed to `snpgdsGetGeno()`.  Default `1`.
+#' @param verbose           Print progress messages. Default `TRUE`.
+#'
+#' @return Named list: `snp_info`, `geno_mat`, `sample_ids`, `format`.
+#' @export
+read_vcf_genotype <- function(file,
+                              vcf_snp_threshold = 50000L,
+                              clean_malformed   = FALSE,
+                              gds_dir           = tempdir(),
+                              n_cores           = 1L,
+                              verbose           = TRUE) {
+
+  # -- Quick SNP count via early-exit probe -----------------------------------
+  n_snps_probe <- 0L
+  con <- gzfile(file, "r")
+  on.exit(try(close(con), silent = TRUE), add = TRUE)
+  repeat {
+    chunk <- readLines(con, n = 5000L, warn = FALSE)
+    if (length(chunk) == 0L) break
+    n_snps_probe <- n_snps_probe + sum(!startsWith(chunk, "#"))
+    if (n_snps_probe >= vcf_snp_threshold) break
+  }
+  close(con)
+
+  if (n_snps_probe < vcf_snp_threshold) {
+    # -------------------------------------------------------------------------
+    # Small-file path: VariantAnnotation
+    # -------------------------------------------------------------------------
+    .assert_packages(c("VariantAnnotation", "SummarizedExperiment",
+                       "GenomeInfoDb", "Biostrings", "S4Vectors"))
+
+    vcf <- VariantAnnotation::readVcf(file)
+    gt  <- VariantAnnotation::geno(vcf)$GT
+    if (is.null(gt))
+      stop("VCF does not contain GT genotype calls.", call. = FALSE)
+
+    gt_to_dosage <- function(x) {
+      x <- gsub("\\|", "/", x)
+      vapply(strsplit(x, "/", fixed = TRUE), function(a) {
+        if (length(a) != 2L || any(a %in% c(".", NA_character_)))
+          return(NA_real_)
+        aa <- suppressWarnings(as.integer(a))
+        if (any(is.na(aa))) return(NA_real_)
+        sum(aa)
+      }, numeric(1L))
+    }
+
+    geno_mat <- apply(gt, 2L, gt_to_dosage)
+    if (!is.matrix(geno_mat)) geno_mat <- matrix(geno_mat, ncol = ncol(gt))
+
+    rr      <- SummarizedExperiment::rowRanges(vcf)
+    alt_vec <- vapply(VariantAnnotation::alt(vcf),
+                      function(x) as.character(x[[1L]]), character(1L))
+    snp_ids <- names(rr)
+    empty   <- is.na(snp_ids) | snp_ids == "" | snp_ids == "."
+    if (any(empty))
+      snp_ids[empty] <- paste0(
+        as.character(GenomeInfoDb::seqnames(rr)[empty]),
+        ":", S4Vectors::start(rr)[empty])
+
+    snp_info <- data.table::data.table(
+      SNP = as.character(snp_ids),
+      CHR = .normalise_chr(as.character(GenomeInfoDb::seqnames(rr))),
+      POS = as.integer(S4Vectors::start(rr)),
+      REF = as.character(VariantAnnotation::ref(vcf)),
+      ALT = alt_vec
+    )
+    rownames(geno_mat) <- snp_info$SNP
+    colnames(geno_mat) <- colnames(gt)
+    storage.mode(geno_mat) <- "numeric"
+    .validate_genotype_object(snp_info, geno_mat)
+
+    return(list(snp_info   = snp_info,
+                geno_mat   = geno_mat,
+                sample_ids = colnames(geno_mat),
+                format     = "vcf"))
+  }
+
+  # ---------------------------------------------------------------------------
+  # Large-file path: SNPRelate streaming conversion
+  # ---------------------------------------------------------------------------
+  .assert_packages(c("SNPRelate", "gdsfmt"))
+  if (!dir.exists(gds_dir)) dir.create(gds_dir, recursive = TRUE)
+
+  vcf_to_use <- file
+
+  # -- Optional cleaning pass -------------------------------------------------
+  if (isTRUE(clean_malformed)) {
+    if (verbose)
+      message("[read_vcf_genotype] Cleaning malformed lines before conversion...")
+    cleaned_path <- file.path(
+      gds_dir,
+      paste0("vcf_cleaned_", format(Sys.time(), "%Y%m%d%H%M%S"), ".vcf.gz")
+    )
+    on.exit(if (file.exists(cleaned_path)) unlink(cleaned_path), add = TRUE)
+    clean_genotype_file(file_in = file, file_out = cleaned_path,
+                        sep = "\t", verbose = verbose)
+    vcf_to_use <- cleaned_path
+  }
+
+  # -- VCF -> GDS conversion --------------------------------------------------
+  gds_path <- file.path(
+    gds_dir,
+    paste0("vcf_import_", format(Sys.time(), "%Y%m%d%H%M%S"), ".gds")
   )
-  rownames(geno_mat) <- snp_info$SNP
-  colnames(geno_mat) <- colnames(gt)
-  storage.mode(geno_mat) <- "numeric"
+  on.exit(if (file.exists(gds_path)) unlink(gds_path), add = TRUE)
 
+  if (verbose)
+    message("[read_vcf_genotype] Converting VCF -> GDS (streaming, ",
+            n_cores, " thread(s)) ...")
+
+  SNPRelate::snpgdsVCF2GDS(
+    vcf.fn      = vcf_to_use,
+    out.fn      = gds_path,
+    method      = "biallelic.only",
+    snpfirstdim = FALSE,
+    verbose     = verbose
+  )
+
+  # -- Read metadata from GDS (no dosage matrix yet) --------------------------
+  genofile   <- SNPRelate::snpgdsOpen(gds_path, readonly = TRUE,
+                                      allow.fork = TRUE)
+  on.exit(try(SNPRelate::snpgdsClose(genofile), silent = TRUE), add = TRUE)
+
+  sample_ids <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "sample.id"))
+  snp_id_raw <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.id"))
+  chrom_raw  <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.chromosome"))
+  pos_raw    <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.position"))
+  allele_raw <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.allele"))
+
+  ref_alt <- do.call(rbind, strsplit(allele_raw, "/", fixed = TRUE))
+  ref_vec <- if (ncol(ref_alt) >= 1L) ref_alt[, 1L] else
+    rep(NA_character_, nrow(ref_alt))
+  alt_vec <- if (ncol(ref_alt) >= 2L) ref_alt[, 2L] else
+    rep(NA_character_, nrow(ref_alt))
+
+  snp_ids  <- paste0(.normalise_chr(as.character(chrom_raw)),
+                     ":", as.character(pos_raw))
+  snp_info <- data.table::data.table(
+    SNP = snp_ids,
+    CHR = .normalise_chr(as.character(chrom_raw)),
+    POS = as.integer(pos_raw),
+    REF = as.character(ref_vec),
+    ALT = as.character(alt_vec)
+  )
+
+  # -- Extract dosage chromosome-by-chromosome (bounded RAM) ------------------
+  n_snps   <- nrow(snp_info)
+  n_samp   <- length(sample_ids)
+  geno_mat <- matrix(NA_real_, nrow = n_snps, ncol = n_samp,
+                     dimnames = list(snp_ids, sample_ids))
+
+  chroms <- unique(snp_info$CHR)
+  for (chr in chroms) {
+    idx     <- which(snp_info$CHR == chr)
+    dosage  <- SNPRelate::snpgdsGetGeno(
+      genofile,
+      snp.id     = snp_id_raw[idx],
+      with.id    = FALSE,
+      num.thread = n_cores,
+      verbose    = FALSE
+    )
+    geno_mat[idx, ] <- dosage
+    rm(dosage); gc(FALSE)
+  }
+
+  storage.mode(geno_mat) <- "numeric"
   .validate_genotype_object(snp_info, geno_mat)
+
+  if (verbose)
+    message("[read_vcf_genotype] Done. ", n_snps, " SNPs x ",
+            n_samp, " samples.")
 
   list(snp_info   = snp_info,
        geno_mat   = geno_mat,
-       sample_ids = colnames(geno_mat),
+       sample_ids = sample_ids,
        format     = "vcf")
 }
 
@@ -396,14 +685,14 @@ read_genotype <- function(file,
   if (identical(format, "auto")) {
     lower  <- tolower(file)
     format <- if (grepl("\\.vcf(\\.gz)?$", lower)) "vcf"
-              else if (grepl("\\.hmp(\\.txt)?$", lower) ||
-                       grepl("hapmap", lower))          "hapmap"
-              else                                       "numeric"
+    else if (grepl("\\.hmp(\\.txt)?$", lower) ||
+             grepl("hapmap", lower))          "hapmap"
+    else                                       "numeric"
   }
   switch(format,
-    numeric = read_numeric_genotype(file),
-    hapmap  = read_hapmap_genotype(file),
-    vcf     = read_vcf_genotype(file)
+         numeric = read_numeric_genotype(file),
+         hapmap  = read_hapmap_genotype(file),
+         vcf     = read_vcf_genotype(file)
   )
 }
 
@@ -464,11 +753,11 @@ read_genotype <- function(file,
 #' stopifnot(is.matrix(p2$phenotype))   # n_samples x 3
 #' }
 read_phenotype <- function(file,
-                            sample_col   = "Sample",
-                            trait_col    = "Trait1",
-                            covar_cols   = NULL,
-                            sample_order = NULL,
-                            sep          = NULL) {
+                           sample_col   = "Sample",
+                           trait_col    = "Trait1",
+                           covar_cols   = NULL,
+                           sample_order = NULL,
+                           sep          = NULL) {
   .assert_packages("data.table")
   trait_col <- as.character(trait_col)   # guard against factor input
 
@@ -533,7 +822,7 @@ read_phenotype <- function(file,
     phenotype   = pheno_out,
     trait_names = trait_col,
     covariates  = if (!is.null(covar_cols)) as.data.frame(dt[, covar_cols, with = FALSE])
-                  else NULL,
+    else NULL,
     sample_ids  = as.character(dt[[sample_col]])
   )
 }
@@ -640,7 +929,7 @@ write_hapmap_genotype <- function(snp_info, geno_mat, file) {
 #'   `summary_file`.
 #' @export
 write_pruning_report <- function(pruning_stats, stats_file,
-                                  summary_file = NULL) {
+                                 summary_file = NULL) {
   .assert_packages("data.table")
   data.table::fwrite(pruning_stats, stats_file, sep = ",", quote = FALSE)
   if (!is.null(summary_file)) {
