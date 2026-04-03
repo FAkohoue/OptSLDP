@@ -594,21 +594,26 @@ read_vcf_genotype <- function(file,
   }
 
   # -- VCF -> GDS conversion --------------------------------------------------
+  # Stable filename so reruns skip the conversion entirely when GDS exists.
   gds_path <- file.path(
     gds_dir,
-    paste0("vcf_import_", format(Sys.time(), "%Y%m%d%H%M%S"), ".gds")
+    paste0(tools::file_path_sans_ext(
+      tools::file_path_sans_ext(basename(vcf_to_use))), ".gds")
   )
-  on.exit(if (file.exists(gds_path)) unlink(gds_path), add = TRUE)
 
-  if (verbose)
-    message("[read_vcf_genotype] Converting VCF -> GDS (streaming) ...")
-
-  SNPRelate::snpgdsVCF2GDS(
-    vcf.fn      = vcf_to_use,
-    out.fn      = gds_path,
-    method      = "biallelic.only",
-    snpfirstdim = FALSE
-  )
+  if (file.exists(gds_path)) {
+    if (verbose)
+      message("[read_vcf_genotype] Reusing existing GDS: ", basename(gds_path))
+  } else {
+    if (verbose)
+      message("[read_vcf_genotype] Converting VCF -> GDS (streaming) ...")
+    SNPRelate::snpgdsVCF2GDS(
+      vcf.fn      = vcf_to_use,
+      out.fn      = gds_path,
+      method      = "biallelic.only",
+      snpfirstdim = FALSE
+    )
+  }
 
   # -- Read metadata from GDS (no dosage matrix yet) --------------------------
   genofile   <- SNPRelate::snpgdsOpen(gds_path, readonly = TRUE,

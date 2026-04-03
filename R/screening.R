@@ -54,7 +54,7 @@
 #' stats_list[["Yield"]]
 #' }
 compute_screening_stats <- function(geno_mat, y, covar = NULL,
-                                     verbose = TRUE) {
+                                    verbose = TRUE) {
   # -- Multi-trait dispatch ----------------------------------------------------
   if (is.matrix(y)) {
     if (nrow(y) != ncol(geno_mat))
@@ -67,9 +67,9 @@ compute_screening_stats <- function(geno_mat, y, covar = NULL,
       .report_progress("  Screening trait '", trait_names[j], "' ...",
                        verbose = verbose)
       out_list[[j]] <- .screen_single_trait(geno_mat,
-                                             y    = y[, j],
-                                             covar  = covar,
-                                             verbose = FALSE)
+                                            y    = y[, j],
+                                            covar  = covar,
+                                            verbose = FALSE)
     }
     return(out_list)
   }
@@ -103,41 +103,74 @@ compute_screening_stats <- function(geno_mat, y, covar = NULL,
 
   maf_dt <- compute_maf(geno_mat)
   n_snps <- nrow(geno_mat)
-  out    <- vector("list", n_snps)
+  n_samp <- ncol(geno_mat)
+  snp_ids <- rownames(geno_mat)
 
   .report_progress("Computing screening statistics for ", n_snps, " SNPs",
                    verbose = verbose)
 
-  for (i in seq_len(n_snps)) {
-    if (verbose && i %% 1000L == 0L)
-      .report_progress("  Screening progress: ", i, " / ", n_snps,
-                       verbose = verbose)
+  # -- Vectorised OLS via matrix algebra --------------------------------------
+  # For each SNP i: beta_i = cov(g_i, y) / var(g_i)
+  # Computed simultaneously for all SNPs using matrix ops.
+  # Missing values handled by mean-imputing each SNP before algebra,
+  # then flagging SNPs with too much missingness as NA.
 
-    snp_id <- rownames(geno_mat)[i]
-    g      <- as.numeric(geno_mat[i, ])
-    ok     <- is.finite(g) & is.finite(y)
+  # Count non-missing per SNP
+  not_na <- !is.na(geno_mat)              # SNPs x samples logical
+  n_obs  <- rowSums(not_na)              # number of complete obs per SNP
 
-    if (sum(ok) < 5L || stats::var(g[ok]) == 0) {
-      out[[i]] <- data.table::data.table(
-        SNP     = snp_id, beta    = NA_real_, SE      = NA_real_,
-        z_score = NA_real_, P.value = NA_real_, PVE     = NA_real_,
-        AF      = maf_dt$AF[i],  MAF     = maf_dt$MAF[i]
-      )
-      next
-    }
+  # Mean-impute missing values for vectorised computation
+  # (results for low-obs or zero-var SNPs will be overwritten with NA below)
+  row_means <- rowMeans(geno_mat, na.rm = TRUE)
+  g_imp     <- geno_mat
+  na_idx    <- which(is.na(geno_mat), arr.ind = TRUE)
+  if (nrow(na_idx) > 0L)
+    g_imp[na_idx] <- row_means[na_idx[, 1L]]
 
-    fit <- stats::lm(y[ok] ~ g[ok])
-    sm  <- summary(fit)$coefficients
-    b   <- sm[2L, 1L]; se <- sm[2L, 2L]
+  # y mean and deviations (y has no NA after residualisation)
+  y_bar   <- mean(y)
+  y_dev   <- y - y_bar                   # length n_samp
 
-    out[[i]] <- data.table::data.table(
-      SNP     = snp_id, beta    = b,              SE      = se,
-      z_score = b / se, P.value = sm[2L, 4L],     PVE     = summary(fit)$r.squared,
-      AF      = maf_dt$AF[i],  MAF     = maf_dt$MAF[i]
-    )
-  }
+  # Per-SNP: g_bar, g_dev, var(g), cov(g,y)
+  g_bar   <- row_means                   # n_snps
+  # g_dev matrix: SNPs x samples (sweep row means)
+  g_dev   <- sweep(g_imp, 1L, g_bar, `-`)   # SNPs x samples
+  g_var   <- rowSums(g_dev^2) / (n_samp - 1L)          # n_snps
+  g_cov_y <- (g_dev %*% y_dev)[, 1L] / (n_samp - 1L)  # n_snps
 
-  data.table::rbindlist(out)
+  beta  <- g_cov_y / g_var              # n_snps
+  # RSS from beta directly (no need to materialise residual matrix)
+  # RSS_i = sum((y - ybar)^2) - beta_i^2 * sum((g_i - gbar_i)^2)
+  ss_tot  <- sum(y_dev^2)
+  ss_reg  <- beta^2 * g_var * (n_samp - 1L)  # = beta * g_cov_y * (n-1)
+  rss     <- ss_tot - ss_reg
+  df_res  <- n_obs - 2L
+  sigma2  <- rss / df_res
+  se      <- sqrt(sigma2 / (g_var * (n_samp - 1L)))
+
+  z_score <- beta / se
+  p_value <- 2 * stats::pt(-abs(z_score), df = df_res)
+  pve     <- ss_reg / ss_tot
+  pve     <- pmax(0, pmin(1, pve))
+
+  # Flag invalid SNPs (too few obs or zero variance)
+  invalid <- n_obs < 5L | g_var <= 0 | !is.finite(g_var)
+  beta[invalid]    <- NA_real_
+  se[invalid]      <- NA_real_
+  z_score[invalid] <- NA_real_
+  p_value[invalid] <- NA_real_
+  pve[invalid]     <- NA_real_
+
+  data.table::data.table(
+    SNP     = snp_ids,
+    beta    = beta,
+    SE      = se,
+    z_score = z_score,
+    P.value = p_value,
+    PVE     = pve,
+    AF      = maf_dt$AF,
+    MAF     = maf_dt$MAF
+  )
 }
 
 
@@ -176,40 +209,58 @@ compute_screening_stats <- function(geno_mat, y, covar = NULL,
 #' @keywords internal
 #' @noRd
 .screen_all_traits <- function(geno_mat, pheno_matrix,
-                                covar           = NULL,
-                                mode            = "A",
-                                pval_threshold  = NULL,
-                                z_threshold     = NULL,
-                                pve_threshold   = NULL,
-                                threshold_logic = "AND",
-                                verbose         = TRUE) {
+                               covar           = NULL,
+                               mode            = "A",
+                               pval_threshold  = NULL,
+                               z_threshold     = NULL,
+                               pve_threshold   = NULL,
+                               threshold_logic = "AND",
+                               n_cores         = 1L,
+                               verbose         = TRUE) {
   trait_names <- colnames(pheno_matrix)
   n_traits    <- length(trait_names)
 
-  stats_list  <- vector("list", n_traits)
-  cands_list  <- vector("list", n_traits)
-  names(stats_list) <- names(cands_list) <- trait_names
+  # Run screening in parallel across traits when multiple cores available
+  # Each trait gets its own vectorised matrix algebra pass
+  n_workers <- min(n_traits, max(1L, n_cores))
 
-  for (j in seq_len(n_traits)) {
-    tn <- trait_names[j]
-    .report_progress("  [", j, "/", n_traits, "] Screening trait '", tn, "' ...",
-                     verbose = verbose)
+  if (n_workers > 1L && .Platform$OS.type == "unix") {
+    if (verbose)
+      message("  Running ", n_traits, " trait screens in parallel (",
+              n_workers, " workers) ...")
+    cl <- parallel::makeCluster(n_workers, type = "FORK")
+    on.exit(parallel::stopCluster(cl), add = TRUE)
 
-    stats_list[[tn]] <- .screen_single_trait(
-      geno_mat, y = pheno_matrix[, j], covar = covar, verbose = FALSE
-    )
+    results <- parallel::parLapply(cl, seq_len(n_traits), function(j) {
+      st <- .screen_single_trait(geno_mat, y = pheno_matrix[, j],
+                                 covar = covar, verbose = FALSE)
+      ca <- select_candidate_snps(st, mode = mode,
+                                  pval_threshold  = pval_threshold,
+                                  z_threshold     = z_threshold,
+                                  pve_threshold   = pve_threshold,
+                                  logic           = threshold_logic)
+      list(stats = st, cands = ca)
+    })
+    stats_list <- stats::setNames(lapply(results, `[[`, "stats"), trait_names)
+    cands_list <- stats::setNames(lapply(results, `[[`, "cands"), trait_names)
+  } else {
+    stats_list <- vector("list", n_traits)
+    cands_list <- vector("list", n_traits)
+    names(stats_list) <- names(cands_list) <- trait_names
 
-    cands_list[[tn]] <- select_candidate_snps(
-      stats_list[[tn]],
-      mode            = mode,
-      pval_threshold  = pval_threshold,
-      z_threshold     = z_threshold,
-      pve_threshold   = pve_threshold,
-      logic           = threshold_logic
-    )
-
-    .report_progress("    -> ", length(cands_list[[tn]]),
-                     " candidate SNP(s) for '", tn, "'", verbose = verbose)
+    for (j in seq_len(n_traits)) {
+      tn <- trait_names[j]
+      .report_progress("  [", j, "/", n_traits, "] Screening trait '", tn,
+                       "' ...", verbose = verbose)
+      stats_list[[tn]] <- .screen_single_trait(
+        geno_mat, y = pheno_matrix[, j], covar = covar, verbose = FALSE)
+      cands_list[[tn]] <- select_candidate_snps(
+        stats_list[[tn]], mode = mode, pval_threshold = pval_threshold,
+        z_threshold = z_threshold, pve_threshold = pve_threshold,
+        logic = threshold_logic)
+      .report_progress("    -> ", length(cands_list[[tn]]),
+                       " candidate SNP(s) for '", tn, "'", verbose = verbose)
+    }
   }
 
   # Union across traits: every SNP important for any trait is protected
@@ -248,11 +299,11 @@ compute_screening_stats <- function(geno_mat, y, covar = NULL,
 #' @return Character vector of selected SNP IDs.
 #' @export
 select_candidate_snps <- function(stats_dt,
-                                   mode            = c("A", "B", "C"),
-                                   pval_threshold  = NULL,
-                                   z_threshold     = NULL,
-                                   pve_threshold   = NULL,
-                                   logic           = c("AND", "OR")) {
+                                  mode            = c("A", "B", "C"),
+                                  pval_threshold  = NULL,
+                                  z_threshold     = NULL,
+                                  pve_threshold   = NULL,
+                                  logic           = c("AND", "OR")) {
   mode    <- match.arg(mode)
   logic   <- match.arg(logic)
   use_and <- identical(logic, "AND")

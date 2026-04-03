@@ -86,20 +86,24 @@
     verbose = verbose
   )
 
-  SNPRelate::snpgdsCreateGeno(
-    gds.fn         = gds_path,
-    genmat         = geno_mat,
-    sample.id      = colnames(geno_mat),
-    snp.id         = snp_info$SNP,
-    snp.chromosome = snp_info$CHR,
-    snp.position   = snp_info$POS,
-    snp.allele     = paste(snp_info$REF, snp_info$ALT, sep = "/"),
-    snpfirstdim    = TRUE,
-    compress.annotation = "ZIP.max",
-    compress.geno       = "ZIP.max"
-  )
-
-  .report_progress("GDS file written.", verbose = verbose)
+  if (file.exists(gds_path)) {
+    .report_progress("Reusing existing GDS: ", basename(gds_path),
+                     verbose = verbose)
+  } else {
+    SNPRelate::snpgdsCreateGeno(
+      gds.fn         = gds_path,
+      genmat         = geno_mat,
+      sample.id      = colnames(geno_mat),
+      snp.id         = snp_info$SNP,
+      snp.chromosome = snp_info$CHR,
+      snp.position   = snp_info$POS,
+      snp.allele     = paste(snp_info$REF, snp_info$ALT, sep = "/"),
+      snpfirstdim    = TRUE,
+      compress.annotation = "ZIP.max",
+      compress.geno       = "ZIP.max"
+    )
+    .report_progress("GDS file written.", verbose = verbose)
+  }
   invisible(gds_path)
 }
 
@@ -187,10 +191,10 @@
   ld_obj  <- .snprelate_call(
     SNPRelate::snpgdsLDMat,
     genofile,
-    snp.id   = snp_ids,
-    method   = method,
-    slide    = -1L,
-    n_cores  = n_cores
+    snp.id  = snp_ids,
+    method  = method,
+    slide   = -1L,
+    n_cores = n_cores
   )
   r2_mat          <- ld_obj$LD^2
   rownames(r2_mat) <- ld_obj$snp.id
@@ -243,8 +247,8 @@
   freq <- .snprelate_call(
     SNPRelate::snpgdsSNPRateFreq,
     genofile,
-    with.id  = TRUE,
-    n_cores  = n_cores
+    with.id = TRUE,
+    n_cores = n_cores
   )
   keep <- freq$AlleleFreq >= maf_min &
     freq$AlleleFreq <= (1 - maf_min) &
@@ -334,7 +338,8 @@
 #' @keywords internal
 #' @noRd
 .extract_geno_gds <- function(genofile, snp_ids, sample_ids = NULL) {
-  mat <- SNPRelate::snpgdsGetGeno(
+  mat <- .snprelate_call(
+    SNPRelate::snpgdsGetGeno,
     genofile,
     snp.id      = snp_ids,
     sample.id   = sample_ids,

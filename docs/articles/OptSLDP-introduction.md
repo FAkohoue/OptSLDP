@@ -490,17 +490,17 @@ class(screen_stats)
 head(screen_stats[order(screen_stats$P.value), ])
 #>       SNP       beta        SE   z_score      P.value        PVE        AF
 #>    <char>      <num>     <num>     <num>        <num>      <num>     <num>
-#> 1: SNP003  1.1243981 0.1803634  6.234072 1.401764e-07 0.46341474 0.2659574
-#> 2: SNP008  0.7672748 0.2402569  3.193560 2.508925e-03 0.17830484 0.2346939
-#> 3: SNP027  0.7623136 0.2415541  3.155872 2.791387e-03 0.17485268 0.3061224
-#> 4: SNP007  0.8810330 0.3118043  2.825596 7.129882e-03 0.15659807 0.1666667
-#> 5: SNP006  0.6010403 0.2500740  2.403450 2.042351e-02 0.11376453 0.2446809
-#> 6: SNP013 -0.5981211 0.2733385 -2.188206 3.366025e-02 0.09245817 0.1836735
+#> 1: SNP003  1.1243981 0.1934965  5.810948 5.953775e-07 0.42869561 0.2659574
+#> 2: SNP027  0.7623136 0.2422588  3.146692 2.864589e-03 0.17401369 0.3061224
+#> 3: SNP008  0.7672748 0.2562695  2.994016 4.380530e-03 0.16017636 0.2346939
+#> 4: SNP007  0.8810330 0.3214913  2.740457 8.899340e-03 0.14868519 0.1666667
+#> 5: SNP006  0.6010403 0.2562338  2.345672 2.345987e-02 0.10894928 0.2446809
+#> 6: SNP013 -0.5981211 0.2745112 -2.178859 3.439012e-02 0.09174224 0.1836735
 #>          MAF
 #>        <num>
 #> 1: 0.2659574
-#> 2: 0.2346939
-#> 3: 0.3061224
+#> 2: 0.3061224
+#> 3: 0.2346939
 #> 4: 0.1666667
 #> 5: 0.2446809
 #> 6: 0.1836735
@@ -563,37 +563,37 @@ names(screen_list)
 head(screen_list$Trait1[order(screen_list$Trait1$P.value), ])
 #>       SNP       beta        SE   z_score      P.value        PVE        AF
 #>    <char>      <num>     <num>     <num>        <num>      <num>     <num>
-#> 1: SNP003  1.1243981 0.1803634  6.234072 1.401764e-07 0.46341474 0.2659574
-#> 2: SNP008  0.7672748 0.2402569  3.193560 2.508925e-03 0.17830484 0.2346939
-#> 3: SNP027  0.7623136 0.2415541  3.155872 2.791387e-03 0.17485268 0.3061224
-#> 4: SNP007  0.8810330 0.3118043  2.825596 7.129882e-03 0.15659807 0.1666667
-#> 5: SNP006  0.6010403 0.2500740  2.403450 2.042351e-02 0.11376453 0.2446809
-#> 6: SNP013 -0.5981211 0.2733385 -2.188206 3.366025e-02 0.09245817 0.1836735
+#> 1: SNP003  1.1243981 0.1934965  5.810948 5.953775e-07 0.42869561 0.2659574
+#> 2: SNP027  0.7623136 0.2422588  3.146692 2.864589e-03 0.17401369 0.3061224
+#> 3: SNP008  0.7672748 0.2562695  2.994016 4.380530e-03 0.16017636 0.2346939
+#> 4: SNP007  0.8810330 0.3214913  2.740457 8.899340e-03 0.14868519 0.1666667
+#> 5: SNP006  0.6010403 0.2562338  2.345672 2.345987e-02 0.10894928 0.2446809
+#> 6: SNP013 -0.5981211 0.2745112 -2.178859 3.439012e-02 0.09174224 0.1836735
 #>          MAF
 #>        <num>
 #> 1: 0.2659574
-#> 2: 0.2346939
-#> 3: 0.3061224
+#> 2: 0.3061224
+#> 3: 0.2346939
 #> 4: 0.1666667
 #> 5: 0.2446809
 #> 6: 0.1836735
 head(screen_list$Trait2[order(screen_list$Trait2$P.value), ])
 #>       SNP       beta        SE   z_score      P.value       PVE        AF
 #>    <char>      <num>     <num>     <num>        <num>     <num>     <num>
-#> 1: SNP020  0.8581281 0.2015283  4.258103 0.0001006297 0.2827231 0.4062500
-#> 2: SNP028 -0.8623397 0.2591511 -3.327555 0.0017081721 0.1906686 0.3265306
-#> 3: SNP005  0.7522204 0.2395933  3.139572 0.0030198745 0.1830204 0.2934783
-#> 4: SNP036  0.6135889 0.2330425  2.632948 0.0114878314 0.1309673 0.3541667
-#> 5: SNP006  0.6990698 0.2765045  2.528240 0.0150415201 0.1243773 0.2446809
-#> 6: SNP019 -0.5467090 0.2234005 -2.447215 0.0183644963 0.1174543 0.3936170
+#> 1: SNP020  0.8581281 0.2037771  4.211112 0.0001169382 0.2782442 0.4062500
+#> 2: SNP028 -0.8623397 0.2598476 -3.318637 0.0017528700 0.1898417 0.3265306
+#> 3: SNP005  0.7522204 0.2581387  2.914016 0.0055901914 0.1617689 0.2934783
+#> 4: SNP036  0.6135889 0.2413778  2.542027 0.0144537069 0.1231732 0.3541667
+#> 5: SNP019 -0.5467090 0.2256044 -2.423308 0.0194647272 0.1154343 0.3936170
+#> 6: SNP006  0.6990698 0.2892943  2.416466 0.0197904088 0.1148581 0.2446809
 #>          MAF
 #>        <num>
 #> 1: 0.4062500
 #> 2: 0.3265306
 #> 3: 0.2934783
 #> 4: 0.3541667
-#> 5: 0.2446809
-#> 6: 0.3936170
+#> 5: 0.3936170
+#> 6: 0.2446809
 ```
 
 ``` r
@@ -655,10 +655,9 @@ cands_A <- select_candidate_snps(
   pval_threshold = 0.05
 )
 cat("Mode A candidates:", length(cands_A), "\n")
-#> Mode A candidates: 11
+#> Mode A candidates: 7
 cands_A
-#>  [1] "SNP003" "SNP006" "SNP007" "SNP008" "SNP009" "SNP012" "SNP013" "SNP015"
-#>  [9] "SNP026" "SNP027" "SNP031"
+#> [1] "SNP003" "SNP006" "SNP007" "SNP008" "SNP009" "SNP013" "SNP027"
 ```
 
 **Mode B — effect-size criteria**
@@ -676,7 +675,7 @@ cands_B <- select_candidate_snps(
   logic         = "OR"
 )
 cat("Mode B (OR) candidates:", length(cands_B), "\n")
-#> Mode B (OR) candidates: 16
+#> Mode B (OR) candidates: 15
 
 # AND logic: require both criteria simultaneously
 cands_B_and <- select_candidate_snps(
@@ -687,7 +686,7 @@ cands_B_and <- select_candidate_snps(
   logic         = "AND"
 )
 cat("Mode B (AND) candidates:", length(cands_B_and), "\n")
-#> Mode B (AND) candidates: 12
+#> Mode B (AND) candidates: 8
 ```
 
 **Mode C — hybrid**
@@ -704,7 +703,7 @@ cands_C <- select_candidate_snps(
   logic          = "OR"
 )
 cat("Mode C (OR) candidates:", length(cands_C), "\n")
-#> Mode C (OR) candidates: 16
+#> Mode C (OR) candidates: 15
 ```
 
 ### Threshold guidance
@@ -768,20 +767,19 @@ important <- expand_important_snps(
 )
 
 cat("Candidate SNPs:  ", length(cands_A),   "\n")
-#> Candidate SNPs:   11
+#> Candidate SNPs:   7
 cat("Important SNPs:  ", length(important), "\n")
-#> Important SNPs:   36
+#> Important SNPs:   29
 cat("Added by expansion:", length(important) - length(cands_A), "\n")
-#> Added by expansion: 25
+#> Added by expansion: 22
 cat("\nImportant SNP set:\n")
 #> 
 #> Important SNP set:
 print(sort(important))
 #>  [1] "SNP001" "SNP002" "SNP003" "SNP004" "SNP005" "SNP006" "SNP007" "SNP008"
 #>  [9] "SNP009" "SNP010" "SNP011" "SNP012" "SNP013" "SNP014" "SNP015" "SNP016"
-#> [17] "SNP017" "SNP018" "SNP019" "SNP020" "SNP021" "SNP022" "SNP023" "SNP024"
-#> [25] "SNP025" "SNP026" "SNP027" "SNP028" "SNP029" "SNP030" "SNP031" "SNP032"
-#> [33] "SNP033" "SNP034" "SNP035" "SNP036"
+#> [17] "SNP017" "SNP018" "SNP022" "SNP023" "SNP024" "SNP025" "SNP026" "SNP027"
+#> [25] "SNP028" "SNP029" "SNP030" "SNP031" "SNP032"
 ```
 
 The \\r^2\\ statistic is the squared Pearson correlation computed from
@@ -823,7 +821,7 @@ The default genome-wide pruning threshold is \\\tau\_{\text{genome}} =
 ``` r
 remaining <- setdiff(snp_info_filt$SNP, important)
 cat("Background SNPs to prune:", length(remaining), "\n")
-#> Background SNPs to prune: 4
+#> Background SNPs to prune: 11
 
 bg_retained <- prune_background_snps(
   remaining_snps = remaining,
@@ -834,7 +832,7 @@ bg_retained <- prune_background_snps(
 )
 
 cat("Background retained after pruning:", length(bg_retained), "\n")
-#> Background retained after pruning: 4
+#> Background retained after pruning: 11
 ```
 
 The final panel combines both sets:
@@ -951,11 +949,11 @@ res_single <- run_sldp(
 cat("Scale strategy used:", res_single$scale_strategy, "\n")
 #> Scale strategy used: in_memory
 cat("Candidate SNPs:     ", length(res_single$candidate_snps), "\n")
-#> Candidate SNPs:      11
+#> Candidate SNPs:      7
 cat("Important SNPs:     ", length(res_single$important_snps), "\n")
-#> Important SNPs:      36
+#> Important SNPs:      29
 cat("Background retained:", length(res_single$background_retained), "\n")
-#> Background retained: 4
+#> Background retained: 11
 cat("Final panel size:   ", nrow(res_single$final_snp_info), "\n")
 #> Final panel size:    40
 
@@ -985,17 +983,17 @@ head(res_single$final_snp_info)
 head(res_single$screening_stats[order(res_single$screening_stats$P.value), ])
 #>       SNP       beta        SE   z_score      P.value        PVE        AF
 #>    <char>      <num>     <num>     <num>        <num>      <num>     <num>
-#> 1: SNP003  1.1243981 0.1803634  6.234072 1.401764e-07 0.46341474 0.2659574
-#> 2: SNP008  0.7672748 0.2402569  3.193560 2.508925e-03 0.17830484 0.2346939
-#> 3: SNP027  0.7623136 0.2415541  3.155872 2.791387e-03 0.17485268 0.3061224
-#> 4: SNP007  0.8810330 0.3118043  2.825596 7.129882e-03 0.15659807 0.1666667
-#> 5: SNP006  0.6010403 0.2500740  2.403450 2.042351e-02 0.11376453 0.2446809
-#> 6: SNP013 -0.5981211 0.2733385 -2.188206 3.366025e-02 0.09245817 0.1836735
+#> 1: SNP003  1.1243981 0.1934965  5.810948 5.953775e-07 0.42869561 0.2659574
+#> 2: SNP027  0.7623136 0.2422588  3.146692 2.864589e-03 0.17401369 0.3061224
+#> 3: SNP008  0.7672748 0.2562695  2.994016 4.380530e-03 0.16017636 0.2346939
+#> 4: SNP007  0.8810330 0.3214913  2.740457 8.899340e-03 0.14868519 0.1666667
+#> 5: SNP006  0.6010403 0.2562338  2.345672 2.345987e-02 0.10894928 0.2446809
+#> 6: SNP013 -0.5981211 0.2745112 -2.178859 3.439012e-02 0.09174224 0.1836735
 #>          MAF
 #>        <num>
 #> 1: 0.2659574
-#> 2: 0.2346939
-#> 3: 0.3061224
+#> 2: 0.3061224
+#> 3: 0.2346939
 #> 4: 0.1666667
 #> 5: 0.2446809
 #> 6: 0.1836735
@@ -1007,9 +1005,9 @@ print(res_single$pruning_stats)
 #> 1:               input       40      40         0                format=numeric
 #> 2:          maf_filter       40      40         0                     maf>=0.05
 #> 3:    preprune_high_ld       40      40         0                      r2>=0.99
-#> 4: candidate_threshold       40      11        29                        mode=A
-#> 5: important_expansion       11      36       -25     window_kb=50; r2_flag=0.9
-#> 6:    background_prune        4       4         0                 r2_genome=0.8
+#> 4: candidate_threshold       40       7        33                        mode=A
+#> 5: important_expansion        7      29       -22     window_kb=50; r2_flag=0.9
+#> 6:    background_prune       11      11         0                 r2_genome=0.8
 #> 7:         final_merge       40      40         0 important + pruned background
 ```
 
@@ -1056,7 +1054,7 @@ res_B <- run_sldp(
 cat("Mode B (OR) — Final panel:", nrow(res_B$final_snp_info), "SNPs\n")
 #> Mode B (OR) — Final panel: 40 SNPs
 cat("Candidates:", length(res_B$candidate_snps), "\n")
-#> Candidates: 16
+#> Candidates: 15
 ```
 
 ### Single-trait run (Mode C)
@@ -1115,11 +1113,11 @@ res_multi <- run_sldp(
 cat("=== Multi-trait results ===\n")
 #> === Multi-trait results ===
 cat("Trait1 candidates:   ", length(res_multi$candidate_snps_per_trait$Trait1), "\n")
-#> Trait1 candidates:    11
+#> Trait1 candidates:    7
 cat("Trait2 candidates:   ", length(res_multi$candidate_snps_per_trait$Trait2), "\n")
-#> Trait2 candidates:    10
+#> Trait2 candidates:    9
 cat("Union candidates:    ", length(res_multi$candidate_snps), "\n")
-#> Union candidates:     18
+#> Union candidates:     14
 cat("Important SNPs:      ", length(res_multi$important_snps), "\n")
 #> Important SNPs:       40
 cat("Final panel:         ", nrow(res_multi$final_snp_info), "\n")
@@ -1301,9 +1299,9 @@ print(report_df)
 #> 1               input       40      40         0                format=numeric
 #> 2          maf_filter       40      40         0                     maf>=0.05
 #> 3    preprune_high_ld       40      40         0                      r2>=0.99
-#> 4 candidate_threshold       40      11        29                        mode=A
-#> 5 important_expansion       11      36       -25     window_kb=50; r2_flag=0.9
-#> 6    background_prune        4       4         0                 r2_genome=0.8
+#> 4 candidate_threshold       40       7        33                        mode=A
+#> 5 important_expansion        7      29       -22     window_kb=50; r2_flag=0.9
+#> 6    background_prune       11      11         0                 r2_genome=0.8
 #> 7         final_merge       40      40         0 important + pruned background
 
 # Read the plain-text summary
@@ -1315,9 +1313,9 @@ cat(readLines(summ_txt), sep = "\n")
 #>   - input                           40 -> 40  (removed 0) | format=numeric
 #>   - maf_filter                      40 -> 40  (removed 0) | maf>=0.05
 #>   - preprune_high_ld                40 -> 40  (removed 0) | r2>=0.99
-#>   - candidate_threshold             40 -> 11  (removed 29) | mode=A
-#>   - important_expansion             11 -> 36  (removed -25) | window_kb=50; r2_flag=0.9
-#>   - background_prune                4 -> 4  (removed 0) | r2_genome=0.8
+#>   - candidate_threshold             40 -> 7  (removed 33) | mode=A
+#>   - important_expansion             7 -> 29  (removed -22) | window_kb=50; r2_flag=0.9
+#>   - background_prune                11 -> 11  (removed 0) | r2_genome=0.8
 #>   - final_merge                     40 -> 40  (removed 0) | important + pruned background
 ```
 

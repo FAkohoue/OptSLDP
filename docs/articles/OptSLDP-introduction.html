@@ -85,7 +85,7 @@
                         <h4 data-toc-skip class="author">Félicien
 Akohoue</h4>
             
-            <h4 data-toc-skip class="date">2026-04-02</h4>
+            <h4 data-toc-skip class="date">2026-04-03</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/FAkohoue/OptSLDP/blob/HEAD/vignettes/OptSLDP-introduction.Rmd" class="external-link"><code>vignettes/OptSLDP-introduction.Rmd</code></a></small>
       <div class="d-none name"><code>OptSLDP-introduction.Rmd</code></div>
@@ -689,17 +689,17 @@ regression</td>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">screen_stats</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">screen_stats</span><span class="op">$</span><span class="va">P.value</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       SNP       beta        SE   z_score      P.value        PVE        AF</span></span>
 <span><span class="co">#&gt;    &lt;char&gt;      &lt;num&gt;     &lt;num&gt;     &lt;num&gt;        &lt;num&gt;      &lt;num&gt;     &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1: SNP003  1.1243981 0.1803634  6.234072 1.401764e-07 0.46341474 0.2659574</span></span>
-<span><span class="co">#&gt; 2: SNP008  0.7672748 0.2402569  3.193560 2.508925e-03 0.17830484 0.2346939</span></span>
-<span><span class="co">#&gt; 3: SNP027  0.7623136 0.2415541  3.155872 2.791387e-03 0.17485268 0.3061224</span></span>
-<span><span class="co">#&gt; 4: SNP007  0.8810330 0.3118043  2.825596 7.129882e-03 0.15659807 0.1666667</span></span>
-<span><span class="co">#&gt; 5: SNP006  0.6010403 0.2500740  2.403450 2.042351e-02 0.11376453 0.2446809</span></span>
-<span><span class="co">#&gt; 6: SNP013 -0.5981211 0.2733385 -2.188206 3.366025e-02 0.09245817 0.1836735</span></span>
+<span><span class="co">#&gt; 1: SNP003  1.1243981 0.1934965  5.810948 5.953775e-07 0.42869561 0.2659574</span></span>
+<span><span class="co">#&gt; 2: SNP027  0.7623136 0.2422588  3.146692 2.864589e-03 0.17401369 0.3061224</span></span>
+<span><span class="co">#&gt; 3: SNP008  0.7672748 0.2562695  2.994016 4.380530e-03 0.16017636 0.2346939</span></span>
+<span><span class="co">#&gt; 4: SNP007  0.8810330 0.3214913  2.740457 8.899340e-03 0.14868519 0.1666667</span></span>
+<span><span class="co">#&gt; 5: SNP006  0.6010403 0.2562338  2.345672 2.345987e-02 0.10894928 0.2446809</span></span>
+<span><span class="co">#&gt; 6: SNP013 -0.5981211 0.2745112 -2.178859 3.439012e-02 0.09174224 0.1836735</span></span>
 <span><span class="co">#&gt;          MAF</span></span>
 <span><span class="co">#&gt;        &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1: 0.2659574</span></span>
-<span><span class="co">#&gt; 2: 0.2346939</span></span>
-<span><span class="co">#&gt; 3: 0.3061224</span></span>
+<span><span class="co">#&gt; 2: 0.3061224</span></span>
+<span><span class="co">#&gt; 3: 0.2346939</span></span>
 <span><span class="co">#&gt; 4: 0.1666667</span></span>
 <span><span class="co">#&gt; 5: 0.2446809</span></span>
 <span><span class="co">#&gt; 6: 0.1836735</span></span></code></pre></div>
@@ -758,37 +758,37 @@ list</strong> of per-trait <code>data.table</code>s:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">screen_list</span><span class="op">$</span><span class="va">Trait1</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">screen_list</span><span class="op">$</span><span class="va">Trait1</span><span class="op">$</span><span class="va">P.value</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       SNP       beta        SE   z_score      P.value        PVE        AF</span></span>
 <span><span class="co">#&gt;    &lt;char&gt;      &lt;num&gt;     &lt;num&gt;     &lt;num&gt;        &lt;num&gt;      &lt;num&gt;     &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1: SNP003  1.1243981 0.1803634  6.234072 1.401764e-07 0.46341474 0.2659574</span></span>
-<span><span class="co">#&gt; 2: SNP008  0.7672748 0.2402569  3.193560 2.508925e-03 0.17830484 0.2346939</span></span>
-<span><span class="co">#&gt; 3: SNP027  0.7623136 0.2415541  3.155872 2.791387e-03 0.17485268 0.3061224</span></span>
-<span><span class="co">#&gt; 4: SNP007  0.8810330 0.3118043  2.825596 7.129882e-03 0.15659807 0.1666667</span></span>
-<span><span class="co">#&gt; 5: SNP006  0.6010403 0.2500740  2.403450 2.042351e-02 0.11376453 0.2446809</span></span>
-<span><span class="co">#&gt; 6: SNP013 -0.5981211 0.2733385 -2.188206 3.366025e-02 0.09245817 0.1836735</span></span>
+<span><span class="co">#&gt; 1: SNP003  1.1243981 0.1934965  5.810948 5.953775e-07 0.42869561 0.2659574</span></span>
+<span><span class="co">#&gt; 2: SNP027  0.7623136 0.2422588  3.146692 2.864589e-03 0.17401369 0.3061224</span></span>
+<span><span class="co">#&gt; 3: SNP008  0.7672748 0.2562695  2.994016 4.380530e-03 0.16017636 0.2346939</span></span>
+<span><span class="co">#&gt; 4: SNP007  0.8810330 0.3214913  2.740457 8.899340e-03 0.14868519 0.1666667</span></span>
+<span><span class="co">#&gt; 5: SNP006  0.6010403 0.2562338  2.345672 2.345987e-02 0.10894928 0.2446809</span></span>
+<span><span class="co">#&gt; 6: SNP013 -0.5981211 0.2745112 -2.178859 3.439012e-02 0.09174224 0.1836735</span></span>
 <span><span class="co">#&gt;          MAF</span></span>
 <span><span class="co">#&gt;        &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1: 0.2659574</span></span>
-<span><span class="co">#&gt; 2: 0.2346939</span></span>
-<span><span class="co">#&gt; 3: 0.3061224</span></span>
+<span><span class="co">#&gt; 2: 0.3061224</span></span>
+<span><span class="co">#&gt; 3: 0.2346939</span></span>
 <span><span class="co">#&gt; 4: 0.1666667</span></span>
 <span><span class="co">#&gt; 5: 0.2446809</span></span>
 <span><span class="co">#&gt; 6: 0.1836735</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">screen_list</span><span class="op">$</span><span class="va">Trait2</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">screen_list</span><span class="op">$</span><span class="va">Trait2</span><span class="op">$</span><span class="va">P.value</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       SNP       beta        SE   z_score      P.value       PVE        AF</span></span>
 <span><span class="co">#&gt;    &lt;char&gt;      &lt;num&gt;     &lt;num&gt;     &lt;num&gt;        &lt;num&gt;     &lt;num&gt;     &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1: SNP020  0.8581281 0.2015283  4.258103 0.0001006297 0.2827231 0.4062500</span></span>
-<span><span class="co">#&gt; 2: SNP028 -0.8623397 0.2591511 -3.327555 0.0017081721 0.1906686 0.3265306</span></span>
-<span><span class="co">#&gt; 3: SNP005  0.7522204 0.2395933  3.139572 0.0030198745 0.1830204 0.2934783</span></span>
-<span><span class="co">#&gt; 4: SNP036  0.6135889 0.2330425  2.632948 0.0114878314 0.1309673 0.3541667</span></span>
-<span><span class="co">#&gt; 5: SNP006  0.6990698 0.2765045  2.528240 0.0150415201 0.1243773 0.2446809</span></span>
-<span><span class="co">#&gt; 6: SNP019 -0.5467090 0.2234005 -2.447215 0.0183644963 0.1174543 0.3936170</span></span>
+<span><span class="co">#&gt; 1: SNP020  0.8581281 0.2037771  4.211112 0.0001169382 0.2782442 0.4062500</span></span>
+<span><span class="co">#&gt; 2: SNP028 -0.8623397 0.2598476 -3.318637 0.0017528700 0.1898417 0.3265306</span></span>
+<span><span class="co">#&gt; 3: SNP005  0.7522204 0.2581387  2.914016 0.0055901914 0.1617689 0.2934783</span></span>
+<span><span class="co">#&gt; 4: SNP036  0.6135889 0.2413778  2.542027 0.0144537069 0.1231732 0.3541667</span></span>
+<span><span class="co">#&gt; 5: SNP019 -0.5467090 0.2256044 -2.423308 0.0194647272 0.1154343 0.3936170</span></span>
+<span><span class="co">#&gt; 6: SNP006  0.6990698 0.2892943  2.416466 0.0197904088 0.1148581 0.2446809</span></span>
 <span><span class="co">#&gt;          MAF</span></span>
 <span><span class="co">#&gt;        &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1: 0.4062500</span></span>
 <span><span class="co">#&gt; 2: 0.3265306</span></span>
 <span><span class="co">#&gt; 3: 0.2934783</span></span>
 <span><span class="co">#&gt; 4: 0.3541667</span></span>
-<span><span class="co">#&gt; 5: 0.2446809</span></span>
-<span><span class="co">#&gt; 6: 0.3936170</span></span></code></pre></div>
+<span><span class="co">#&gt; 5: 0.3936170</span></span>
+<span><span class="co">#&gt; 6: 0.2446809</span></span></code></pre></div>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">qtn2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNP006"</span>, <span class="st">"SNP028"</span>, <span class="st">"SNP020"</span><span class="op">)</span></span>
 <span></span>
@@ -846,10 +846,9 @@ trait are highlighted.
 <span>  pval_threshold <span class="op">=</span> <span class="fl">0.05</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mode A candidates:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cands_A</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Mode A candidates: 11</span></span>
+<span><span class="co">#&gt; Mode A candidates: 7</span></span>
 <span><span class="va">cands_A</span></span>
-<span><span class="co">#&gt;  [1] "SNP003" "SNP006" "SNP007" "SNP008" "SNP009" "SNP012" "SNP013" "SNP015"</span></span>
-<span><span class="co">#&gt;  [9] "SNP026" "SNP027" "SNP031"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "SNP003" "SNP006" "SNP007" "SNP008" "SNP009" "SNP013" "SNP027"</span></span></code></pre></div>
 <p><strong>Mode B — effect-size criteria</strong></p>
 <p><span class="math display">\[\mathcal{C}_B = \{i : |z_i| \ge \tau_z
 \;\text{[AND/OR]}\; R^2_i \ge \tau_{\text{pve}}\}\]</span></p>
@@ -863,7 +862,7 @@ trait are highlighted.
 <span>  logic         <span class="op">=</span> <span class="st">"OR"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mode B (OR) candidates:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cands_B</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Mode B (OR) candidates: 16</span></span>
+<span><span class="co">#&gt; Mode B (OR) candidates: 15</span></span>
 <span></span>
 <span><span class="co"># AND logic: require both criteria simultaneously</span></span>
 <span><span class="va">cands_B_and</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/select_candidate_snps.html">select_candidate_snps</a></span><span class="op">(</span></span>
@@ -874,7 +873,7 @@ trait are highlighted.
 <span>  logic         <span class="op">=</span> <span class="st">"AND"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mode B (AND) candidates:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cands_B_and</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Mode B (AND) candidates: 12</span></span></code></pre></div>
+<span><span class="co">#&gt; Mode B (AND) candidates: 8</span></span></code></pre></div>
 <p><strong>Mode C — hybrid</strong></p>
 <p><span class="math display">\[\mathcal{C}_C = \{i : p_i \le \tau_p
 \;\text{[AND/OR]}\; |z_i| \ge \tau_z\}\]</span></p>
@@ -887,7 +886,7 @@ trait are highlighted.
 <span>  logic          <span class="op">=</span> <span class="st">"OR"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mode C (OR) candidates:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cands_C</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Mode C (OR) candidates: 16</span></span></code></pre></div>
+<span><span class="co">#&gt; Mode C (OR) candidates: 15</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="threshold-guidance">Threshold guidance<a class="anchor" aria-label="anchor" href="#threshold-guidance"></a>
@@ -972,20 +971,19 @@ tests):</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Candidate SNPs:  "</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cands_A</span><span class="op">)</span>,   <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Candidate SNPs:   11</span></span>
+<span><span class="co">#&gt; Candidate SNPs:   7</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Important SNPs:  "</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">important</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Important SNPs:   36</span></span>
+<span><span class="co">#&gt; Important SNPs:   29</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Added by expansion:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">important</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">cands_A</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Added by expansion: 25</span></span>
+<span><span class="co">#&gt; Added by expansion: 22</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nImportant SNP set:\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Important SNP set:</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">important</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  [1] "SNP001" "SNP002" "SNP003" "SNP004" "SNP005" "SNP006" "SNP007" "SNP008"</span></span>
 <span><span class="co">#&gt;  [9] "SNP009" "SNP010" "SNP011" "SNP012" "SNP013" "SNP014" "SNP015" "SNP016"</span></span>
-<span><span class="co">#&gt; [17] "SNP017" "SNP018" "SNP019" "SNP020" "SNP021" "SNP022" "SNP023" "SNP024"</span></span>
-<span><span class="co">#&gt; [25] "SNP025" "SNP026" "SNP027" "SNP028" "SNP029" "SNP030" "SNP031" "SNP032"</span></span>
-<span><span class="co">#&gt; [33] "SNP033" "SNP034" "SNP035" "SNP036"</span></span></code></pre></div>
+<span><span class="co">#&gt; [17] "SNP017" "SNP018" "SNP022" "SNP023" "SNP024" "SNP025" "SNP026" "SNP027"</span></span>
+<span><span class="co">#&gt; [25] "SNP028" "SNP029" "SNP030" "SNP031" "SNP032"</span></span></code></pre></div>
 <p>The <span class="math inline">\(r^2\)</span> statistic is the squared
 Pearson correlation computed from the dosage matrix with
 pairwise-complete observations:</p>
@@ -1022,7 +1020,7 @@ applied chromosome-by-chromosome in genomic position order:</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">remaining</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">setdiff</a></span><span class="op">(</span><span class="va">snp_info_filt</span><span class="op">$</span><span class="va">SNP</span>, <span class="va">important</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Background SNPs to prune:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">remaining</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Background SNPs to prune: 4</span></span>
+<span><span class="co">#&gt; Background SNPs to prune: 11</span></span>
 <span></span>
 <span><span class="va">bg_retained</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prune_background_snps.html">prune_background_snps</a></span><span class="op">(</span></span>
 <span>  remaining_snps <span class="op">=</span> <span class="va">remaining</span>,</span>
@@ -1033,7 +1031,7 @@ applied chromosome-by-chromosome in genomic position order:</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Background retained after pruning:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">bg_retained</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Background retained after pruning: 4</span></span></code></pre></div>
+<span><span class="co">#&gt; Background retained after pruning: 11</span></span></code></pre></div>
 <p>The final panel combines both sets:</p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">final_snps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">important</span>, <span class="va">bg_retained</span><span class="op">)</span><span class="op">)</span></span>
@@ -1226,11 +1224,11 @@ and an output path; everything else is handled internally.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Scale strategy used:"</span>, <span class="va">res_single</span><span class="op">$</span><span class="va">scale_strategy</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Scale strategy used: in_memory</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Candidate SNPs:     "</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">res_single</span><span class="op">$</span><span class="va">candidate_snps</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Candidate SNPs:      11</span></span>
+<span><span class="co">#&gt; Candidate SNPs:      7</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Important SNPs:     "</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">res_single</span><span class="op">$</span><span class="va">important_snps</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Important SNPs:      36</span></span>
+<span><span class="co">#&gt; Important SNPs:      29</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Background retained:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">res_single</span><span class="op">$</span><span class="va">background_retained</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Background retained: 4</span></span>
+<span><span class="co">#&gt; Background retained: 11</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Final panel size:   "</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">res_single</span><span class="op">$</span><span class="va">final_snp_info</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Final panel size:    40</span></span>
 <span></span>
@@ -1260,17 +1258,17 @@ and an output path; everything else is handled internally.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res_single</span><span class="op">$</span><span class="va">screening_stats</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">res_single</span><span class="op">$</span><span class="va">screening_stats</span><span class="op">$</span><span class="va">P.value</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       SNP       beta        SE   z_score      P.value        PVE        AF</span></span>
 <span><span class="co">#&gt;    &lt;char&gt;      &lt;num&gt;     &lt;num&gt;     &lt;num&gt;        &lt;num&gt;      &lt;num&gt;     &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1: SNP003  1.1243981 0.1803634  6.234072 1.401764e-07 0.46341474 0.2659574</span></span>
-<span><span class="co">#&gt; 2: SNP008  0.7672748 0.2402569  3.193560 2.508925e-03 0.17830484 0.2346939</span></span>
-<span><span class="co">#&gt; 3: SNP027  0.7623136 0.2415541  3.155872 2.791387e-03 0.17485268 0.3061224</span></span>
-<span><span class="co">#&gt; 4: SNP007  0.8810330 0.3118043  2.825596 7.129882e-03 0.15659807 0.1666667</span></span>
-<span><span class="co">#&gt; 5: SNP006  0.6010403 0.2500740  2.403450 2.042351e-02 0.11376453 0.2446809</span></span>
-<span><span class="co">#&gt; 6: SNP013 -0.5981211 0.2733385 -2.188206 3.366025e-02 0.09245817 0.1836735</span></span>
+<span><span class="co">#&gt; 1: SNP003  1.1243981 0.1934965  5.810948 5.953775e-07 0.42869561 0.2659574</span></span>
+<span><span class="co">#&gt; 2: SNP027  0.7623136 0.2422588  3.146692 2.864589e-03 0.17401369 0.3061224</span></span>
+<span><span class="co">#&gt; 3: SNP008  0.7672748 0.2562695  2.994016 4.380530e-03 0.16017636 0.2346939</span></span>
+<span><span class="co">#&gt; 4: SNP007  0.8810330 0.3214913  2.740457 8.899340e-03 0.14868519 0.1666667</span></span>
+<span><span class="co">#&gt; 5: SNP006  0.6010403 0.2562338  2.345672 2.345987e-02 0.10894928 0.2446809</span></span>
+<span><span class="co">#&gt; 6: SNP013 -0.5981211 0.2745112 -2.178859 3.439012e-02 0.09174224 0.1836735</span></span>
 <span><span class="co">#&gt;          MAF</span></span>
 <span><span class="co">#&gt;        &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1: 0.2659574</span></span>
-<span><span class="co">#&gt; 2: 0.2346939</span></span>
-<span><span class="co">#&gt; 3: 0.3061224</span></span>
+<span><span class="co">#&gt; 2: 0.3061224</span></span>
+<span><span class="co">#&gt; 3: 0.2346939</span></span>
 <span><span class="co">#&gt; 4: 0.1666667</span></span>
 <span><span class="co">#&gt; 5: 0.2446809</span></span>
 <span><span class="co">#&gt; 6: 0.1836735</span></span>
@@ -1282,9 +1280,9 @@ and an output path; everything else is handled internally.</p>
 <span><span class="co">#&gt; 1:               input       40      40         0                format=numeric</span></span>
 <span><span class="co">#&gt; 2:          maf_filter       40      40         0                     maf&gt;=0.05</span></span>
 <span><span class="co">#&gt; 3:    preprune_high_ld       40      40         0                      r2&gt;=0.99</span></span>
-<span><span class="co">#&gt; 4: candidate_threshold       40      11        29                        mode=A</span></span>
-<span><span class="co">#&gt; 5: important_expansion       11      36       -25     window_kb=50; r2_flag=0.9</span></span>
-<span><span class="co">#&gt; 6:    background_prune        4       4         0                 r2_genome=0.8</span></span>
+<span><span class="co">#&gt; 4: candidate_threshold       40       7        33                        mode=A</span></span>
+<span><span class="co">#&gt; 5: important_expansion        7      29       -22     window_kb=50; r2_flag=0.9</span></span>
+<span><span class="co">#&gt; 6:    background_prune       11      11         0                 r2_genome=0.8</span></span>
 <span><span class="co">#&gt; 7:         final_merge       40      40         0 important + pruned background</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -1331,7 +1329,7 @@ Step-by-step SNP count through the OptSLDP pipeline.
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mode B (OR) — Final panel:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">res_B</span><span class="op">$</span><span class="va">final_snp_info</span><span class="op">)</span>, <span class="st">"SNPs\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Mode B (OR) — Final panel: 40 SNPs</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Candidates:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">res_B</span><span class="op">$</span><span class="va">candidate_snps</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Candidates: 16</span></span></code></pre></div>
+<span><span class="co">#&gt; Candidates: 15</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="single-trait-run-mode-c">Single-trait run (Mode C)<a class="anchor" aria-label="anchor" href="#single-trait-run-mode-c"></a>
@@ -1390,11 +1388,11 @@ panel.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"=== Multi-trait results ===\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; === Multi-trait results ===</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Trait1 candidates:   "</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">res_multi</span><span class="op">$</span><span class="va">candidate_snps_per_trait</span><span class="op">$</span><span class="va">Trait1</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Trait1 candidates:    11</span></span>
+<span><span class="co">#&gt; Trait1 candidates:    7</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Trait2 candidates:   "</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">res_multi</span><span class="op">$</span><span class="va">candidate_snps_per_trait</span><span class="op">$</span><span class="va">Trait2</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Trait2 candidates:    10</span></span>
+<span><span class="co">#&gt; Trait2 candidates:    9</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Union candidates:    "</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">res_multi</span><span class="op">$</span><span class="va">candidate_snps</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Union candidates:     18</span></span>
+<span><span class="co">#&gt; Union candidates:     14</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Important SNPs:      "</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">res_multi</span><span class="op">$</span><span class="va">important_snps</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Important SNPs:       40</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Final panel:         "</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">res_multi</span><span class="op">$</span><span class="va">final_snp_info</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
@@ -1597,9 +1595,9 @@ or on error via <code>on.exit(.close_all_gds_handles())</code>.</p>
 <span><span class="co">#&gt; 1               input       40      40         0                format=numeric</span></span>
 <span><span class="co">#&gt; 2          maf_filter       40      40         0                     maf&gt;=0.05</span></span>
 <span><span class="co">#&gt; 3    preprune_high_ld       40      40         0                      r2&gt;=0.99</span></span>
-<span><span class="co">#&gt; 4 candidate_threshold       40      11        29                        mode=A</span></span>
-<span><span class="co">#&gt; 5 important_expansion       11      36       -25     window_kb=50; r2_flag=0.9</span></span>
-<span><span class="co">#&gt; 6    background_prune        4       4         0                 r2_genome=0.8</span></span>
+<span><span class="co">#&gt; 4 candidate_threshold       40       7        33                        mode=A</span></span>
+<span><span class="co">#&gt; 5 important_expansion        7      29       -22     window_kb=50; r2_flag=0.9</span></span>
+<span><span class="co">#&gt; 6    background_prune       11      11         0                 r2_genome=0.8</span></span>
 <span><span class="co">#&gt; 7         final_merge       40      40         0 important + pruned background</span></span>
 <span></span>
 <span><span class="co"># Read the plain-text summary</span></span>
@@ -1611,9 +1609,9 @@ or on error via <code>on.exit(.close_all_gds_handles())</code>.</p>
 <span><span class="co">#&gt;   - input                           40 -&gt; 40  (removed 0) | format=numeric</span></span>
 <span><span class="co">#&gt;   - maf_filter                      40 -&gt; 40  (removed 0) | maf&gt;=0.05</span></span>
 <span><span class="co">#&gt;   - preprune_high_ld                40 -&gt; 40  (removed 0) | r2&gt;=0.99</span></span>
-<span><span class="co">#&gt;   - candidate_threshold             40 -&gt; 11  (removed 29) | mode=A</span></span>
-<span><span class="co">#&gt;   - important_expansion             11 -&gt; 36  (removed -25) | window_kb=50; r2_flag=0.9</span></span>
-<span><span class="co">#&gt;   - background_prune                4 -&gt; 4  (removed 0) | r2_genome=0.8</span></span>
+<span><span class="co">#&gt;   - candidate_threshold             40 -&gt; 7  (removed 33) | mode=A</span></span>
+<span><span class="co">#&gt;   - important_expansion             7 -&gt; 29  (removed -22) | window_kb=50; r2_flag=0.9</span></span>
+<span><span class="co">#&gt;   - background_prune                11 -&gt; 11  (removed 0) | r2_genome=0.8</span></span>
 <span><span class="co">#&gt;   - final_merge                     40 -&gt; 40  (removed 0) | important + pruned background</span></span></code></pre></div>
 <hr>
 </div>

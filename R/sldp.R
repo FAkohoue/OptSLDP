@@ -347,13 +347,14 @@ run_sldp <- function(genotype_file,
 
     screen_res <- .screen_all_traits(
       geno_mat        = geno_screen,
-      pheno_matrix    = phenotype,       # n_samples x n_traits matrix
+      pheno_matrix    = phenotype,
       covar           = covariates,
       mode            = mode,
       pval_threshold  = pval_threshold,
       z_threshold     = z_threshold,
       pve_threshold   = pve_threshold,
       threshold_logic = threshold_logic,
+      n_cores         = min(length(trait_col), n_cores),
       verbose         = verbose
     )
 
