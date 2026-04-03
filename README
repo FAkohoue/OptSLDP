@@ -1,7 +1,7 @@
 # OptSLDP — An Optimized Selective Linkage Disequilibrium Pruning Pipeline
 
 <p align="center">
-  <img src="man/figures/logo.png" alt="OptSLDP logo" width="100%">
+  <img src="man/figures/logo.png" alt="OptSLDP logo" width="120px">
 </p>
 
 <!-- badges: start -->

@@ -84,4 +84,12 @@ devtools::build()
 
 
 options(pkgdown.internet = FALSE)
-pkgdown::build_site()
+
+# Build everything except home, then build home separately
+pkgdown::build_reference()
+pkgdown::build_articles()
+pkgdown::build_news()
+
+# Build home with network disabled at the curl level
+httr2_mock <- function(...) stop("no network", call. = FALSE)
+pkgdown::build_home()
