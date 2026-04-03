@@ -68,6 +68,10 @@ devtools::document()
 # 3. Install, test and check
 devtools::install()
 
+install.packages(".", repos = NULL, type = "source")
+
+ls(asNamespace("OptSLDP"), pattern = "snprelate", all.names = TRUE)
+
 #devtools::install(build_vignettes = FALSE, force = TRUE)
 
 devtools::test()
@@ -79,6 +83,8 @@ unloadNamespace("OptSLDP")
 pkgdown::clean_site(force = TRUE)
 pkgdown::build_site()
 
+ls(asNamespace("OptSLDP"), all.names = TRUE, pattern = "snprelate")
+exists(".snprelate_call", envir = asNamespace("OptSLDP"), inherits = FALSE)
 
 devtools::build()
 
@@ -93,3 +99,5 @@ pkgdown::build_news()
 # Build home with network disabled at the curl level
 httr2_mock <- function(...) stop("no network", call. = FALSE)
 pkgdown::build_home()
+
+pkgdown::build_site()

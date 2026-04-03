@@ -190,7 +190,6 @@
     snp.id   = snp_ids,
     method   = method,
     slide    = -1L,
-    verbose  = FALSE,
     n_cores  = n_cores
   )
   r2_mat          <- ld_obj$LD^2
@@ -245,7 +244,6 @@
     SNPRelate::snpgdsSNPRateFreq,
     genofile,
     with.id  = TRUE,
-    verbose  = FALSE,
     n_cores  = n_cores
   )
   keep <- freq$AlleleFreq >= maf_min &
@@ -284,7 +282,6 @@
     slide.max.bp = slide_max_bp,
     slide.max.n  = -1L,
     missing.rate = 0.10,
-    verbose      = FALSE,
     n_cores      = n_cores
   )
   kept
@@ -316,7 +313,6 @@
     slide.max.bp = slide_max_bp,
     slide.max.n  = -1L,
     missing.rate = 0.10,
-    verbose      = FALSE,
     n_cores      = n_cores
   )
 }
@@ -343,8 +339,7 @@
     snp.id      = snp_ids,
     sample.id   = sample_ids,
     snpfirstdim = TRUE,
-    with.id     = TRUE,
-    verbose     = FALSE
+    with.id     = TRUE
   )
   rownames(mat$genotype) <- mat$snp.id
   colnames(mat$genotype) <- mat$sample.id

@@ -607,8 +607,7 @@ read_vcf_genotype <- function(file,
     vcf.fn      = vcf_to_use,
     out.fn      = gds_path,
     method      = "biallelic.only",
-    snpfirstdim = FALSE,
-    verbose     = verbose
+    snpfirstdim = FALSE
   )
 
   # -- Read metadata from GDS (no dosage matrix yet) --------------------------
@@ -652,7 +651,6 @@ read_vcf_genotype <- function(file,
       genofile,
       snp.id  = snp_id_raw[idx],
       with.id = FALSE,
-      verbose = FALSE,
       n_cores = n_cores
     )
     geno_mat[idx, ] <- dosage
