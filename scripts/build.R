@@ -68,8 +68,6 @@ devtools::document()
 # 3. Install, test and check
 devtools::install()
 
-install.packages(".", repos = NULL, type = "source")
-
 ls(asNamespace("OptSLDP"), pattern = "snprelate", all.names = TRUE)
 
 #devtools::install(build_vignettes = FALSE, force = TRUE)

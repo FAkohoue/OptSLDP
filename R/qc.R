@@ -29,8 +29,7 @@ compute_maf <- function(geno_mat, ctx = NULL) {
   if (!is.null(ctx) && identical(ctx$strategy, "gds")) {
     freq <- SNPRelate::snpgdsSNPRateFreq(
       ctx$genofile,
-      with.id    = TRUE,
-      verbose    = FALSE
+      with.id    = TRUE
     )
     af  <- freq$AlleleFreq
     maf <- pmin(af, 1 - af)
