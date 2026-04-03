@@ -2,59 +2,72 @@
 
 ## OptSLDP 0.1.0
 
-### New features
+### Performance
+
+- **Vectorised OLS screening** – `.screen_single_trait()` uses matrix
+  algebra (`sweep` + `tcrossprod` via BLAS DGEMM) instead of per-SNP
+  [`lm()`](https://rdrr.io/r/stats/lm.html) calls. Speedup: 50-200x for
+  the screening step on large panels.
+
+- **Parallel multi-trait screening** – traits are screened
+  simultaneously using a FORK cluster on Linux when `n_cores > 1`,
+  halving screening time for two-trait runs. Falls back to sequential on
+  Windows.
+
+- **C++ LD kernel** (`src/ld_kernel.cpp`, RcppArmadillo) – three
+  compiled functions eliminate R interpreter overhead from all LD hot
+  paths:
+
+  - `r2_subset_cpp()`: candidate-row-only r^2 via BLAS DGEMM. Cost
+    O(n_cands x n_snps x n_samp) vs O(n_snps^2 x n_samp).
+  - `above_threshold_subset_cpp()`: sparse (row, col) scan in C++.
+  - `greedy_prune_r2_cpp()`: greedy forward-selection pruning in C++.
+    Pure-R fallbacks provided for systems without a C++ compiler.
+
+- **Batched chromosome LD expansion** –
+  [`expand_important_snps()`](https://FAkohoue.github.io/OptSLDP/reference/expand_important_snps.md)
+  extracts genotypes once per chromosome via `.extract_geno_gds()` and
+  uses
+  [`data.table::foverlaps()`](https://rdrr.io/pkg/data.table/man/foverlaps.html)
+  for O(n log n) positional window joins. Reduces GDS reads from
+  n_candidates (thousands) to n_chromosomes (~11 for rice). Step 8 time:
+  from hours to minutes.
+
+- **Skip-on-rerun GDS caching** – VCF-to-GDS conversion and
+  `sldp_main.gds` write check for existing files and skip if present.
+  Reruns skip ~8 minutes of one-time preparation.
+
+- **[`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) replaces
+  [`stats::cor()`](https://rdrr.io/r/stats/cor.html)** – all in-memory
+  LD computations use mean-imputation +
+  [`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) (BLAS DGEMM)
+  via `.r2_tcrossprod()`, avoiding
+  [`cor()`](https://rdrr.io/r/stats/cor.html)s per-pair NA handling
+  overhead.
+
+### New functions
 
 - **[`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md)**
-  – new exported function that stream-cleans any accepted genotype file
-  (numeric CSV, HapMap, VCF / bgzipped VCF) by removing lines whose
-  delimiter-separated column count does not match the header. Separator
-  is auto-detected from the file extension. Works in 50,000-line chunks
-  so memory use is bounded regardless of file size.
+  – stream-clean any genotype file (numeric CSV, HapMap, VCF/bgzipped
+  VCF) by removing lines with unexpected column counts. Separator
+  auto-detected from file extension. Chunked at 50,000 lines.
 
 - **[`run_sldp()`](https://FAkohoue.github.io/OptSLDP/reference/run_sldp.md)
-  gains `clean_malformed` parameter** – set `TRUE` to automatically
-  clean the genotype file before reading, for all accepted formats. The
-  cleaned temporary file is deleted automatically after the reading step
-  completes. Required for VCF output from NGSEP and other callers that
-  embed `/` characters in FORMAT fields.
+  gains `clean_malformed` parameter** – pass `TRUE` to clean before
+  reading. Temporary file deleted automatically after reading.
 
-- **[`read_vcf_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_vcf_genotype.md)
-  auto-routes large VCF files** – files with more than
-  `vcf_snp_threshold` SNPs (default 50,000) bypass `VariantAnnotation`
-  and use
-  [`SNPRelate::snpgdsVCF2GDS()`](https://rdrr.io/pkg/SNPRelate/man/snpgdsVCF2GDS.html)
-  for streaming conversion to GDS, then extract dosage
-  chromosome-by-chromosome. This avoids the
-  `scanVcf: cannot allocate memory` error that occurs with
-  multi-million-SNP VCF files. The threshold and GDS directory are
-  user-configurable.
+### Infrastructure
 
-- **`n_cores` forwarded to `snpgdsGetGeno()`** – parallelises dosage
-  extraction in the large-VCF SNPRelate path.
-
-### Bug fixes
-
-- [`read_vcf_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_vcf_genotype.md)
-  now uses [`gzfile()`](https://rdrr.io/r/base/connections.html) instead
-  of [`file()`](https://rdrr.io/r/base/connections.html) for the
-  SNP-count probe, correctly reading bgzipped VCF files.
-
-- [`read_numeric_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_numeric_genotype.md)
-  and
-  [`read_hapmap_genotype()`](https://FAkohoue.github.io/OptSLDP/reference/read_hapmap_genotype.md)
-  accept `clean_malformed` and apply
-  [`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md)
-  before parsing.
-
-### Internal
-
-- `tools` added to `Imports` (used by
-  [`clean_genotype_file()`](https://FAkohoue.github.io/OptSLDP/reference/clean_genotype_file.md)
-  for temporary file naming via
-  [`tools::file_path_sans_ext()`](https://rdrr.io/r/tools/fileutils.html)
-  and [`tools::file_ext()`](https://rdrr.io/r/tools/fileutils.html)).
-
-------------------------------------------------------------------------
+- `Rcpp` and `RcppArmadillo` added to `Imports` and `LinkingTo`.
+- `@useDynLib OptSLDP, .registration = TRUE` and
+  `@importFrom Rcpp evalCpp` in package-level roxygen block; `NAMESPACE`
+  fully generated by roxygen2.
+- `R/utils_snprelate.R` – `.snprelate_call()` uses
+  [`formals()`](https://rdrr.io/r/base/formals.html) to pass
+  `num.thread` only to SNPRelate functions that accept it.
+- `R/utils_cpp.R` – R-level wrappers around C++ functions with pure-R
+  fallbacks.
+- `tools` added to `Imports`.
 
 ## OptSLDP 0.1.0
 

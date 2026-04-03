@@ -138,5 +138,8 @@
 #' populations. \emph{Theoretical and Applied Genetics}, \strong{139}, 52.
 #' \doi{10.1007/s00122-026-05159-z}
 #'
+#' @useDynLib OptSLDP, .registration = TRUE
+#' @importFrom Rcpp evalCpp
+#' @importFrom stats sd
 #' @keywords internal
 "_PACKAGE"

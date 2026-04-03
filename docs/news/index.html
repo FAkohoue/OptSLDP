@@ -58,28 +58,46 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="optsldp-010">OptSLDP 0.1.0<a class="anchor" aria-label="anchor" href="#optsldp-010"></a></h2>
 <div class="section level3">
-<h3 id="new-features-0-1-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-1-0"></a></h3>
-<ul><li><p><strong><code><a href="../reference/clean_genotype_file.html">clean_genotype_file()</a></code></strong> – new exported function that stream-cleans any accepted genotype file (numeric CSV, HapMap, VCF / bgzipped VCF) by removing lines whose delimiter-separated column count does not match the header. Separator is auto-detected from the file extension. Works in 50,000-line chunks so memory use is bounded regardless of file size.</p></li>
-<li><p><strong><code><a href="../reference/run_sldp.html">run_sldp()</a></code> gains <code>clean_malformed</code> parameter</strong> – set <code>TRUE</code> to automatically clean the genotype file before reading, for all accepted formats. The cleaned temporary file is deleted automatically after the reading step completes. Required for VCF output from NGSEP and other callers that embed <code>/</code> characters in FORMAT fields.</p></li>
-<li><p><strong><code><a href="../reference/read_vcf_genotype.html">read_vcf_genotype()</a></code> auto-routes large VCF files</strong> – files with more than <code>vcf_snp_threshold</code> SNPs (default 50,000) bypass <code>VariantAnnotation</code> and use <code><a href="https://rdrr.io/pkg/SNPRelate/man/snpgdsVCF2GDS.html" class="external-link">SNPRelate::snpgdsVCF2GDS()</a></code> for streaming conversion to GDS, then extract dosage chromosome-by-chromosome. This avoids the <code>scanVcf: cannot allocate memory</code> error that occurs with multi-million-SNP VCF files. The threshold and GDS directory are user-configurable.</p></li>
-<li><p><strong><code>n_cores</code> forwarded to <code>snpgdsGetGeno()</code></strong> – parallelises dosage extraction in the large-VCF SNPRelate path.</p></li>
-</ul></div>
-<div class="section level3">
-<h3 id="bug-fixes-0-1-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-0"></a></h3>
-<ul><li><p><code><a href="../reference/read_vcf_genotype.html">read_vcf_genotype()</a></code> now uses <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">gzfile()</a></code> instead of <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">file()</a></code> for the SNP-count probe, correctly reading bgzipped VCF files.</p></li>
-<li><p><code><a href="../reference/read_numeric_genotype.html">read_numeric_genotype()</a></code> and <code><a href="../reference/read_hapmap_genotype.html">read_hapmap_genotype()</a></code> accept <code>clean_malformed</code> and apply <code><a href="../reference/clean_genotype_file.html">clean_genotype_file()</a></code> before parsing.</p></li>
-</ul></div>
-<div class="section level3">
-<h3 id="internal-0-1-0">Internal<a class="anchor" aria-label="anchor" href="#internal-0-1-0"></a></h3>
+<h3 id="performance-0-1-0">Performance<a class="anchor" aria-label="anchor" href="#performance-0-1-0"></a></h3>
+<ul><li><p><strong>Vectorised OLS screening</strong> – <code>.screen_single_trait()</code> uses matrix algebra (<code>sweep</code> + <code>tcrossprod</code> via BLAS DGEMM) instead of per-SNP <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> calls. Speedup: 50-200x for the screening step on large panels.</p></li>
+<li><p><strong>Parallel multi-trait screening</strong> – traits are screened simultaneously using a FORK cluster on Linux when <code>n_cores &gt; 1</code>, halving screening time for two-trait runs. Falls back to sequential on Windows.</p></li>
+<li>
+<p><strong>C++ LD kernel</strong> (<code>src/ld_kernel.cpp</code>, RcppArmadillo) – three compiled functions eliminate R interpreter overhead from all LD hot paths:</p>
 <ul><li>
-<code>tools</code> added to <code>Imports</code> (used by <code><a href="../reference/clean_genotype_file.html">clean_genotype_file()</a></code> for temporary file naming via <code><a href="https://rdrr.io/r/tools/fileutils.html" class="external-link">tools::file_path_sans_ext()</a></code> and <code><a href="https://rdrr.io/r/tools/fileutils.html" class="external-link">tools::file_ext()</a></code>).</li>
-</ul><hr></div>
+<code>r2_subset_cpp()</code>: candidate-row-only r^2 via BLAS DGEMM. Cost O(n_cands x n_snps x n_samp) vs O(n_snps^2 x n_samp).</li>
+<li>
+<code>above_threshold_subset_cpp()</code>: sparse (row, col) scan in C++.</li>
+<li>
+<code>greedy_prune_r2_cpp()</code>: greedy forward-selection pruning in C++. Pure-R fallbacks provided for systems without a C++ compiler.</li>
+</ul></li>
+<li><p><strong>Batched chromosome LD expansion</strong> – <code><a href="../reference/expand_important_snps.html">expand_important_snps()</a></code> extracts genotypes once per chromosome via <code>.extract_geno_gds()</code> and uses <code><a href="https://rdrr.io/pkg/data.table/man/foverlaps.html" class="external-link">data.table::foverlaps()</a></code> for O(n log n) positional window joins. Reduces GDS reads from n_candidates (thousands) to n_chromosomes (~11 for rice). Step 8 time: from hours to minutes.</p></li>
+<li><p><strong>Skip-on-rerun GDS caching</strong> – VCF-to-GDS conversion and <code>sldp_main.gds</code> write check for existing files and skip if present. Reruns skip ~8 minutes of one-time preparation.</p></li>
+<li><p><strong><code><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod()</a></code> replaces <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">stats::cor()</a></code></strong> – all in-memory LD computations use mean-imputation + <code><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod()</a></code> (BLAS DGEMM) via <code>.r2_tcrossprod()</code>, avoiding <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code>s per-pair NA handling overhead.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-functions-0-1-0">New functions<a class="anchor" aria-label="anchor" href="#new-functions-0-1-0"></a></h3>
+<ul><li><p><strong><code><a href="../reference/clean_genotype_file.html">clean_genotype_file()</a></code></strong> – stream-clean any genotype file (numeric CSV, HapMap, VCF/bgzipped VCF) by removing lines with unexpected column counts. Separator auto-detected from file extension. Chunked at 50,000 lines.</p></li>
+<li><p><strong><code><a href="../reference/run_sldp.html">run_sldp()</a></code> gains <code>clean_malformed</code> parameter</strong> – pass <code>TRUE</code> to clean before reading. Temporary file deleted automatically after reading.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="infrastructure-0-1-0">Infrastructure<a class="anchor" aria-label="anchor" href="#infrastructure-0-1-0"></a></h3>
+<ul><li>
+<code>Rcpp</code> and <code>RcppArmadillo</code> added to <code>Imports</code> and <code>LinkingTo</code>.</li>
+<li>
+<code>@useDynLib OptSLDP, .registration = TRUE</code> and <code>@importFrom Rcpp evalCpp</code> in package-level roxygen block; <code>NAMESPACE</code> fully generated by roxygen2.</li>
+<li>
+<code>R/utils_snprelate.R</code> – <code>.snprelate_call()</code> uses <code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code> to pass <code>num.thread</code> only to SNPRelate functions that accept it.</li>
+<li>
+<code>R/utils_cpp.R</code> – R-level wrappers around C++ functions with pure-R fallbacks.</li>
+<li>
+<code>tools</code> added to <code>Imports</code>.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="optsldp-010-1">OptSLDP 0.1.0<a class="anchor" aria-label="anchor" href="#optsldp-010-1"></a></h2>
 <p>First public release of <code>OptSLDP</code>, an optimized and extended implementation of the Selective Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel construction. The package builds on the algorithm of Zhu et al. (2023, <em>Genetics Selection Evolution</em>, <strong>55</strong>(1), 72, <a href="doi:10.1186/s12711-023-00843-w" class="uri">doi:10.1186/s12711-023-00843-w</a>) and is further motivated by the GWAS-derived marker weighting framework of Akohoue et al. (2026, <em>Theoretical and Applied Genetics</em>, <strong>139</strong>, 52, <a href="doi:10.1007/s00122-026-05159-z" class="uri">doi:10.1007/s00122-026-05159-z</a>).</p>
 <hr><div class="section level3">
-<h3 id="new-functions-0-1-0">New functions<a class="anchor" aria-label="anchor" href="#new-functions-0-1-0"></a></h3>
+<h3 id="new-functions-0-1-0-1">New functions<a class="anchor" aria-label="anchor" href="#new-functions-0-1-0-1"></a></h3>
 <div class="section level4">
 <h4 id="main-pipeline-0-1-0">Main pipeline<a class="anchor" aria-label="anchor" href="#main-pipeline-0-1-0"></a></h4>
 <ul><li><p><code><a href="../reference/run_sldp.html">run_sldp()</a></code> — end-to-end pipeline accepting two input files (a genotype file and a phenotype file) and one output path. Internally handles phenotype reading, sample alignment, MAF filtering, optional high-LD pre-pruning, marginal screening, candidate selection, important-SNP expansion, background LD pruning, and output writing across 12 sequential steps. Scale strategy (in-memory / chunked / GDS) is selected automatically from the post-filter SNP count or overridden explicitly.</p></li>

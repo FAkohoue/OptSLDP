@@ -1,10 +1,11 @@
 # Compute pairwise LD (r^2) for a subset of SNPs
 
-Dispatches to an in-memory [`cor()`](https://rdrr.io/r/stats/cor.html)
-computation or a disk-backed `snpgdsLDMat()` call depending on the scale
-strategy embedded in `ctx`. When no context is supplied the function
-falls back to the pure in-memory path, preserving backward compatibility
-for direct calls.
+Dispatches to an in-memory
+[`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) BLAS computation
+or a disk-backed `snpgdsLDMat()` call depending on the scale strategy
+embedded in `ctx`. When no context is supplied the function falls back
+to the pure in-memory path, preserving backward compatibility for direct
+calls.
 
 ## Usage
 

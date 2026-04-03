@@ -1,20 +1,49 @@
+# Files and directories excluded from the R package tarball (R CMD build).
+# Uses Perl-compatible regular expressions matched against the full path.
+# Entries here do NOT affect what git tracks -- see .gitignore for that.
+
+# -- Version control and CI ---------------------------------------------------
 ^\.git$
 ^\.gitignore$
 ^\.github$
+
+# -- pkgdown site --------------------------------------------------------------
 ^_pkgdown\.yml$
 ^pkgdown$
 ^docs$
+
+# -- Development-only files ----------------------------------------------------
 ^data-raw$
 ^README\.Rmd$
 ^cran-comments\.md$
 ^renv$
 ^renv\.lock$
+
+# -- IDE and editor files ------------------------------------------------------
 ^\.Rproj\.user$
 ^.*\.Rproj$
 ^\.vscode$
 ^\.idea$
+
+# -- pkgdown / vignette build artefacts ----------------------------------------
 ^man/figures$
 ^vignettes/cache$
 ^vignettes/figure$
+
+# -- Misc development scripts --------------------------------------------------
 ^scripts$
+
+# -- License note (LICENSE.md is for humans; LICENSE file is for CRAN) ---------
 ^LICENSE\.md$
+
+# -- C++ compilation artefacts -------------------------------------------------
+# Object files and shared libraries are produced at install time from src/.
+# They must NOT be bundled in the source tarball.
+^src/.*\.o$
+^src/.*\.so$
+^src/.*\.dll$
+^src/.*\.a$
+^src/.*\.def$
+
+# NOTE: src/ld_kernel.cpp, src/RcppExports.cpp, and R/RcppExports.R
+# are NOT excluded -- they are source files required to build the package.

@@ -22,7 +22,7 @@ Symmetric numeric r^2 matrix with row and column names equal to
 \code{snp_ids}.
 }
 \description{
-Dispatches to an in-memory \code{cor()} computation or a disk-backed
+Dispatches to an in-memory \code{tcrossprod()} BLAS computation or a disk-backed
 \code{snpgdsLDMat()} call depending on the scale strategy embedded in \code{ctx}.
 When no context is supplied the function falls back to the pure in-memory
 path, preserving backward compatibility for direct calls.

@@ -81,3 +81,12 @@ tables for 40 SNPs and 50 samples.
 
 - [`example_optsldp`](https://FAkohoue.github.io/OptSLDP/reference/example_optsldp.md)
   : Example data for OptSLDP
+
+## Example data
+
+Synthetic dataset for demonstrating and testing the pipeline. Contains
+genotype matrix, phenotype vectors, GWAS results, and ground-truth QTN
+tables for 40 SNPs and 50 samples.
+
+- [`example_optsldp`](https://FAkohoue.github.io/OptSLDP/reference/example_optsldp.md)
+  : Example data for OptSLDP

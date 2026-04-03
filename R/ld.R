@@ -4,8 +4,14 @@
 #
 # Public functions (compute_r2_subset, find_ld_neighbors) are unchanged from
 # the user's perspective. Internally they dispatch to either the fast in-memory
-# cor() path or the GDS/SNPRelate streaming path depending on the active
-# scale strategy stored in the GDS context object.
+# tcrossprod() BLAS path or the GDS/SNPRelate streaming path depending on the
+# active scale strategy stored in the GDS context object.
+#
+# In-memory LD computation uses tcrossprod() -> DGEMM (BLAS level-3) rather
+# than stats::cor(use="pairwise.complete.obs"). This avoids cor()'s per-pair
+# NA handling overhead and maps directly to the fastest multi-threaded BLAS
+# routine. NAs are mean-imputed per SNP before the matrix multiply; zero-
+# variance SNPs are flagged and returned as NA rows/columns.
 #
 # A "GDS context" is a list produced by .build_gds_context() in OptSLDP (sldp.R):
 #   $strategy   : "in_memory" | "chunked" | "gds"
@@ -16,9 +22,45 @@
 # ==============================================================================
 
 
+# -- Internal: fast BLAS r^2 via tcrossprod() ----------------------------------
+
+#' Compute r^2 matrix via mean-imputation + tcrossprod() (DGEMM)
+#'
+#' Faster than stats::cor(use="pairwise.complete.obs") because it avoids
+#' per-pair NA handling. NAs are mean-imputed per SNP so that a single
+#' tcrossprod() call covers all pairs simultaneously.
+#' @importFrom stats sd
+#' @keywords internal
+#' @noRd
+.r2_tcrossprod <- function(mat) {
+  # Pure-R full r^2 matrix via mean-imputation + tcrossprod() (BLAS DGEMM).
+  # The C++ kernel (r2_subset_cpp) computes candidate rows only and is called
+  # from .compute_ld_subset_cpp() in utils_cpp.R. This function handles the
+  # full square matrix needed by the in-memory and chunked strategies.
+  n_samp <- ncol(mat)
+
+  row_means <- rowMeans(mat, na.rm = TRUE)
+  na_idx    <- which(is.na(mat), arr.ind = TRUE)
+  if (nrow(na_idx) > 0L)
+    mat[na_idx] <- row_means[na_idx[, 1L]]
+
+  g_sd           <- apply(mat, 1L, stats::sd)
+  zero_var       <- g_sd == 0 | is.na(g_sd)
+  g_sd[zero_var] <- 1
+  scale_factor   <- g_sd * sqrt(n_samp - 1L)
+  mat_scaled     <- (mat - row_means) / scale_factor
+
+  r2             <- tcrossprod(mat_scaled)^2
+  r2[zero_var, ] <- NA_real_
+  r2[, zero_var] <- NA_real_
+  diag(r2)       <- 1
+  r2
+}
+
+
 #' Compute pairwise LD (r^2) for a subset of SNPs
 #'
-#' Dispatches to an in-memory `cor()` computation or a disk-backed
+#' Dispatches to an in-memory `tcrossprod()` BLAS computation or a disk-backed
 #' `snpgdsLDMat()` call depending on the scale strategy embedded in `ctx`.
 #' When no context is supplied the function falls back to the pure in-memory
 #' path, preserving backward compatibility for direct calls.
@@ -57,15 +99,8 @@ compute_r2_subset <- function(geno_mat, snp_ids, ctx = NULL) {
       call. = FALSE
     )
   }
-  sub  <- mat[snp_ids, , drop = FALSE]
-  cmat <- withCallingHandlers(
-    stats::cor(t(sub), use = "pairwise.complete.obs"),
-    warning = function(w) {
-      if (grepl("standard deviation is zero", conditionMessage(w),
-                fixed = TRUE)) invokeRestart("muffleWarning")
-    }
-  )
-  cmat^2
+  sub <- mat[snp_ids, , drop = FALSE]
+  .r2_tcrossprod(sub)
 }
 
 
@@ -91,7 +126,7 @@ compute_r2_subset <- function(geno_mat, snp_ids, ctx = NULL) {
 #'                           ctx = gds_ctx)
 #' }
 find_ld_neighbors <- function(focal_snp, geno_mat, candidate_ids,
-                               r2_threshold = 0.90, ctx = NULL) {
+                              r2_threshold = 0.90, ctx = NULL) {
   all_ids <- unique(c(focal_snp, candidate_ids))
 
   # -- GDS path -----------------------------------------------------------------

@@ -58,7 +58,9 @@ jobs:
             libpng-dev \
             libtiff5-dev \
             libjpeg-dev \
-            zlib1g-dev
+            zlib1g-dev \
+            libopenblas-dev \
+            liblapack-dev
 
       - name: Install Bioconductor packages (Linux)
         if: runner.os == 'Linux'
@@ -81,7 +83,8 @@ jobs:
         if: runner.os == 'Linux'
         shell: Rscript {0}
         run: |
-          pkgs <- c("rcmdcheck", "data.table", "knitr", "rmarkdown", "testthat")
+          pkgs <- c("rcmdcheck", "data.table", "knitr", "rmarkdown",
+                    "testthat", "Rcpp", "RcppArmadillo")
           missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1L), quietly = TRUE)]
           if (length(missing))
             install.packages(missing, repos = "https://cloud.r-project.org")

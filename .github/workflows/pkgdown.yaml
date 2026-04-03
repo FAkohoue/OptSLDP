@@ -44,7 +44,8 @@ jobs:
             libcurl4-openssl-dev libssl-dev libxml2-dev \
             libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
             libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
-            zlib1g-dev libgit2-dev
+            zlib1g-dev libgit2-dev \
+            libopenblas-dev liblapack-dev
 
       - name: Install Bioconductor packages
         shell: Rscript {0}
@@ -64,7 +65,8 @@ jobs:
         shell: Rscript {0}
         run: |
           pkgs <- c("pkgdown", "knitr", "rmarkdown",
-                    "data.table", "testthat")
+                    "data.table", "testthat",
+                    "Rcpp", "RcppArmadillo")
           to_install <- pkgs[!vapply(pkgs, requireNamespace,
                                      logical(1L), quietly = TRUE)]
           if (length(to_install))

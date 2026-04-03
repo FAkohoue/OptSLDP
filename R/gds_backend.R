@@ -363,8 +363,8 @@
 #'
 #' | Strategy   | Condition                            | Key behaviour                              |
 #' |------------|--------------------------------------|---------------------------------------------|
-#' | in_memory  | n_snps <= thresh_small (200 K)       | Full matrix in RAM; `cor()` for LD.         |
-#' | chunked    | thresh_small < n_snps <= thresh_med  | Per-chromosome matrix; `cor()` for LD.      |
+#' | in_memory  | n_snps <= thresh_small (200 K)       | Full matrix in RAM; `tcrossprod()` for LD.  |
+#' | chunked    | thresh_small < n_snps <= thresh_med  | Per-chromosome matrix; `tcrossprod()` for LD.|
 #' | gds        | n_snps > thresh_medium (2 M)         | Disk-backed GDS; `snpgdsLDMat()` for LD.   |
 #'
 #' @param n_snps        Integer. Total SNP count after MAF filtering.

@@ -22,7 +22,7 @@ in four concrete ways:
    one chunk rather than twice the full file.
 2. **Explicit per-chromosome garbage collection** — `gc(FALSE)` is called
    after each chromosome's LD matrix is released in both the pre-pruning and
-   background-pruning loops, preventing heap fragmentation across 20–30
+   background-pruning loops, preventing heap fragmentation across 20-30
    chromosome passes.
 3. **Multi-trait union protection** — screening and candidate selection run
    independently for each trait; the union of all per-trait candidate sets is
@@ -33,6 +33,16 @@ in four concrete ways:
    covariates in every marginal regression but computed in a single `lm()`
    call), which correctly adjusts effect estimates for population structure or
    other confounders.
+5. **Vectorised OLS screening** — marginal regressions use matrix algebra
+   (`tcrossprod` via BLAS DGEMM) instead of per-SNP `lm()` calls, giving
+   50-200x speedup for the screening step.
+6. **C++ LD kernel** — pairwise r^2 computation, candidate-subset LD matrices,
+   sparse threshold scanning, and greedy pruning all run in compiled C++
+   (RcppArmadillo), eliminating R interpreter overhead entirely.
+7. **Batched chromosome LD expansion** — the important-SNP expansion loop
+   extracts genotypes once per chromosome using `data.table::foverlaps()`
+   for O(n log n) positional joins, reducing GDS reads from thousands to one
+   per chromosome.
 
 OptSLDP is also inspired by the genome-wide association study-derived marker
 weighting approach of Akohoue et al. (2026) for blast resistance prediction in
@@ -399,8 +409,8 @@ throughout the pipeline.
 
 | Strategy | Trigger (default) | LD backend | Notes |
 |----------|-------------------|-----------|-------|
-| `in_memory` | $n \le 200\,000$ | `cor()` on full matrix in RAM | Fastest for small panels |
-| `chunked` | $200\,000 < n \le 2\,000\,000$ | `cor()` per chromosome | Bounds RAM to one chromosome |
+| `in_memory` | $n \le 200\,000$ | `tcrossprod()` / C++ BLAS in RAM | Fastest for small panels |
+| `chunked` | $200\,000 < n \le 2\,000\,000$ | `tcrossprod()` / C++ per chromosome | Bounds RAM to one chromosome |
 | `gds` | $n > 2\,000\,000$ | `snpgdsLDMat()` from disk | Requires SNPRelate |
 
 Override with `scale_strategy = "in_memory"` / `"chunked"` / `"gds"`. Adjust
@@ -632,10 +642,12 @@ res <- run_sldp(
 ### Parallelism
 
 The `n_cores` parameter is passed to SNPRelate functions in the GDS strategy
-(`snpgdsLDMat`, `snpgdsPruneLD`, `snpgdsSNPRateFreq`). Marginal regressions
-in the screening step are single-threaded because each regression is very fast
-and the overhead of parallelising 40 K–200 K short `lm()` calls generally
-exceeds the gain.
+(`snpgdsLDMat`, `snpgdsPruneLD`, `snpgdsSNPRateFreq`). The marginal screening
+step uses vectorised matrix algebra (BLAS `tcrossprod`) for all SNPs
+simultaneously, and when multiple traits are requested they are screened in
+parallel using a FORK cluster (`parallel::makeCluster`) on Linux. The C++ LD
+kernel (`RcppArmadillo`) uses BLAS DGEMM which is automatically multi-threaded
+by the system BLAS (OpenBLAS or MKL).
 
 ---
 
@@ -660,7 +672,7 @@ If you use `OptSLDP` in published research, please cite:
 ```
 Akohoue, F. (2026).
 OptSLDP: An Optimized Selective Linkage Disequilibrium Pruning Pipeline for Genomic Prediction.
-R package version 0.1.0.
+R package version 0.2.0.
 https://github.com/FAkohoue/OptSLDP
 ```
 

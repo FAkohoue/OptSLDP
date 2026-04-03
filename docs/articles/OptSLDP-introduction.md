@@ -42,6 +42,9 @@ The final panel is \\\mathcal{I} \cup \text{retained}(\mathcal{B})\\.
 | Per-chromosome [`gc()`](https://rdrr.io/r/base/gc.html) | `gc(FALSE)` called after each chromosome’s LD matrix is released in both the pre-pruning and background-pruning loops |
 | Multi-trait union protection | Screening and candidate selection run independently per trait; the union of all per-trait candidate sets drives expansion and protection |
 | Covariate-adjusted screening | Phenotypes are residualised on shared covariates once before the SNP scan, equivalent to fitting covariates in every marginal regression |
+| Vectorised OLS screening | Matrix algebra (`tcrossprod` via BLAS DGEMM) replaces per-SNP [`lm()`](https://rdrr.io/r/stats/lm.html) calls; 50-200x faster for large panels |
+| C++ LD kernel | `r2_subset_cpp()`, `above_threshold_subset_cpp()`, `greedy_prune_r2_cpp()` compiled via RcppArmadillo; zero R interpreter overhead |
+| Batched LD expansion | Genotypes extracted once per chromosome; `foverlaps()` O(n log n) joins replace O(n^2) loops; GDS reads reduced from thousands to ~11 |
 
 ------------------------------------------------------------------------
 
@@ -794,14 +797,14 @@ block_a_snps <- paste0("SNP", sprintf("%03d", 1:8))
 r2_block_a   <- compute_r2_subset(geno_mat_filt, block_a_snps)
 round(r2_block_a, 2)
 #>        SNP001 SNP002 SNP003 SNP004 SNP005 SNP006 SNP007 SNP008
-#> SNP001   1.00   0.02   0.06   0.10   0.36   0.14   0.15   0.15
-#> SNP002   0.02   1.00   0.08   0.12   0.09   0.12   0.33   0.11
-#> SNP003   0.06   0.08   1.00   0.03   0.14   0.14   0.26   0.36
-#> SNP004   0.10   0.12   0.03   1.00   0.25   0.10   0.30   0.12
-#> SNP005   0.36   0.09   0.14   0.25   1.00   0.21   0.35   0.28
-#> SNP006   0.14   0.12   0.14   0.10   0.21   1.00   0.20   0.27
-#> SNP007   0.15   0.33   0.26   0.30   0.35   0.20   1.00   0.49
-#> SNP008   0.15   0.11   0.36   0.12   0.28   0.27   0.49   1.00
+#> SNP001   1.00   0.02   0.05   0.09   0.33   0.13   0.11   0.14
+#> SNP002   0.02   1.00   0.06   0.11   0.08   0.11   0.26   0.10
+#> SNP003   0.05   0.06   1.00   0.02   0.13   0.13   0.19   0.33
+#> SNP004   0.09   0.11   0.02   1.00   0.19   0.09   0.25   0.11
+#> SNP005   0.33   0.08   0.13   0.19   1.00   0.20   0.24   0.26
+#> SNP006   0.13   0.11   0.13   0.09   0.20   1.00   0.17   0.25
+#> SNP007   0.11   0.26   0.19   0.25   0.24   0.17   1.00   0.43
+#> SNP008   0.14   0.10   0.33   0.11   0.26   0.25   0.43   1.00
 ```
 
 ------------------------------------------------------------------------
@@ -1363,11 +1366,13 @@ transparent to the user.
 ### Parallelism
 
 The `n_cores` argument is forwarded to SNPRelate functions in the GDS
-strategy (`snpgdsLDMat`, `snpgdsPruneLD`, `snpgdsSNPRateFreq`). Marginal
-regressions in the screening step are single-threaded because the
-per-SNP [`lm()`](https://rdrr.io/r/stats/lm.html) cost is small relative
-to launch overhead, so parallelism provides no net benefit for typical
-panel sizes.
+strategy (`snpgdsLDMat`, `snpgdsPruneLD`, `snpgdsSNPRateFreq`). The
+screening step uses vectorised matrix algebra (BLAS `tcrossprod`) for
+all SNPs simultaneously rather than per-SNP
+[`lm()`](https://rdrr.io/r/stats/lm.html) calls. When multiple traits
+are requested, traits are screened in parallel using a FORK cluster on
+Linux. The C++ LD kernel (RcppArmadillo) calls BLAS DGEMM which is
+automatically multi-threaded by the system BLAS (OpenBLAS or MKL).
 
 ------------------------------------------------------------------------
 
@@ -1434,11 +1439,11 @@ sessionInfo()
 #> [65] knitr_1.51                  GenomicRanges_1.60.0       
 #> [67] IRanges_2.42.0              BiocIO_1.18.0              
 #> [69] rtracklayer_1.68.0          rlang_1.1.7                
-#> [71] DBI_1.3.0                   BiocGenerics_0.54.1        
-#> [73] rstudioapi_0.18.0           jsonlite_2.0.0             
-#> [75] R6_2.6.1                    systemfonts_1.3.2          
-#> [77] GenomicAlignments_1.44.0    MatrixGenerics_1.20.0      
-#> [79] fs_2.0.1
+#> [71] Rcpp_1.0.14                 DBI_1.3.0                  
+#> [73] BiocGenerics_0.54.1         rstudioapi_0.18.0          
+#> [75] jsonlite_2.0.0              R6_2.6.1                   
+#> [77] systemfonts_1.3.2           GenomicAlignments_1.44.0   
+#> [79] MatrixGenerics_1.20.0       fs_2.0.1
 ```
 
 ------------------------------------------------------------------------

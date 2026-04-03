@@ -24,9 +24,9 @@
 <link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="OptSLDP — Optimized Selective Linkage Disequilibrium Pruning">
-<meta name="description" content="An optimized and extended Selective Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel construction. Supports multi-trait union protection, covariate-adjusted marginal screening, chunked memory-safe genotype reading, and automatic scaling from small in-memory panels to whole-genome sequencing datasets with &gt; 10 million SNPs.
+<meta name="description" content="An optimized and extended Selective Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel construction. Supports multi-trait union protection, vectorised BLAS screening, C++ LD kernels, batched chromosome LD expansion, covariate-adjusted marginal screening, chunked memory-safe genotype reading, and automatic scaling from small in-memory panels to whole-genome sequencing datasets with &gt; 10 million SNPs.
 ">
-<meta property="og:description" content="An optimized and extended Selective Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel construction. Supports multi-trait union protection, covariate-adjusted marginal screening, chunked memory-safe genotype reading, and automatic scaling from small in-memory panels to whole-genome sequencing datasets with &gt; 10 million SNPs.
+<meta property="og:description" content="An optimized and extended Selective Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel construction. Supports multi-trait union protection, vectorised BLAS screening, C++ LD kernels, batched chromosome LD expansion, covariate-adjusted marginal screening, chunked memory-safe genotype reading, and automatic scaling from small in-memory panels to whole-genome sequencing datasets with &gt; 10 million SNPs.
 ">
 <meta property="og:image" content="https://FAkohoue.github.io/OptSLDP/logo.svg">
 </head>
@@ -96,11 +96,17 @@
 <li>
 <strong>Memory-safe chunked reading</strong> — genotype files are read in fixed-size row chunks with a pre-allocated output matrix, so peak RAM is proportional to one chunk rather than twice the full file.</li>
 <li>
-<strong>Explicit per-chromosome garbage collection</strong> — <code>gc(FALSE)</code> is called after each chromosome’s LD matrix is released in both the pre-pruning and background-pruning loops, preventing heap fragmentation across 20–30 chromosome passes.</li>
+<strong>Explicit per-chromosome garbage collection</strong> — <code>gc(FALSE)</code> is called after each chromosome’s LD matrix is released in both the pre-pruning and background-pruning loops, preventing heap fragmentation across 20-30 chromosome passes.</li>
 <li>
 <strong>Multi-trait union protection</strong> — screening and candidate selection run independently for each trait; the union of all per-trait candidate sets is expanded and protected, so every SNP important for <em>any</em> trait is retained in the final panel.</li>
 <li>
 <strong>Covariate-adjusted marginal screening</strong> — phenotypes are residualised on shared covariates once before the SNP scan (equivalent to including covariates in every marginal regression but computed in a single <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> call), which correctly adjusts effect estimates for population structure or other confounders.</li>
+<li>
+<strong>Vectorised OLS screening</strong> — marginal regressions use matrix algebra (<code>tcrossprod</code> via BLAS DGEMM) instead of per-SNP <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> calls, giving 50-200x speedup for the screening step.</li>
+<li>
+<strong>C++ LD kernel</strong> — pairwise r^2 computation, candidate-subset LD matrices, sparse threshold scanning, and greedy pruning all run in compiled C++ (RcppArmadillo), eliminating R interpreter overhead entirely.</li>
+<li>
+<strong>Batched chromosome LD expansion</strong> — the important-SNP expansion loop extracts genotypes once per chromosome using <code><a href="https://rdrr.io/pkg/data.table/man/foverlaps.html" class="external-link">data.table::foverlaps()</a></code> for O(n log n) positional joins, reducing GDS reads from thousands to one per chromosome.</li>
 </ol>
 <p>OptSLDP is also inspired by the genome-wide association study-derived marker weighting approach of Akohoue et al. (2026) for blast resistance prediction in rice, and scales automatically from small in-memory panels to whole-genome sequencing datasets with more than 10 million SNPs.</p>
 <hr>
@@ -457,14 +463,14 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <td><code>in_memory</code></td>
 <td><span class="math inline">\(n \le 200\,000\)</span></td>
 <td>
-<code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> on full matrix in RAM</td>
+<code><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod()</a></code> / C++ BLAS in RAM</td>
 <td>Fastest for small panels</td>
 </tr>
 <tr>
 <td><code>chunked</code></td>
 <td><span class="math inline">\(200\,000 &lt; n \le 2\,000\,000\)</span></td>
 <td>
-<code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> per chromosome</td>
+<code><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod()</a></code> / C++ per chromosome</td>
 <td>Bounds RAM to one chromosome</td>
 </tr>
 <tr>
@@ -924,7 +930,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <div class="section level3">
 <h3 id="parallelism">Parallelism<a class="anchor" aria-label="anchor" href="#parallelism"></a>
 </h3>
-<p>The <code>n_cores</code> parameter is passed to SNPRelate functions in the GDS strategy (<code>snpgdsLDMat</code>, <code>snpgdsPruneLD</code>, <code>snpgdsSNPRateFreq</code>). Marginal regressions in the screening step are single-threaded because each regression is very fast and the overhead of parallelising 40 K–200 K short <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> calls generally exceeds the gain.</p>
+<p>The <code>n_cores</code> parameter is passed to SNPRelate functions in the GDS strategy (<code>snpgdsLDMat</code>, <code>snpgdsPruneLD</code>, <code>snpgdsSNPRateFreq</code>). The marginal screening step uses vectorised matrix algebra (BLAS <code>tcrossprod</code>) for all SNPs simultaneously, and when multiple traits are requested they are screened in parallel using a FORK cluster (<code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster</a></code>) on Linux. The C++ LD kernel (<code>RcppArmadillo</code>) uses BLAS DGEMM which is automatically multi-threaded by the system BLAS (OpenBLAS or MKL).</p>
 <hr>
 </div>
 </div>
@@ -944,7 +950,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <p>If you use <code>OptSLDP</code> in published research, please cite:</p>
 <pre><code>Akohoue, F. (2026).
 OptSLDP: An Optimized Selective Linkage Disequilibrium Pruning Pipeline for Genomic Prediction.
-R package version 0.1.0.
+R package version 0.2.0.
 https://github.com/FAkohoue/OptSLDP</code></pre>
 <p>You should also cite the underlying methodological papers:</p>
 <pre><code>Zhu D, Zhao Y, Zhang R, Wu H, Cai G, Wu Z, Wang Y, Hu X (2023).

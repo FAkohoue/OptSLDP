@@ -20,12 +20,13 @@ home:
   description: >
     An optimized and extended Selective Linkage Disequilibrium Pruning (SLDP)
     pipeline for genomic prediction panel construction. Supports multi-trait
-    union protection, covariate-adjusted marginal screening, chunked
+    union protection, vectorised BLAS screening, C++ LD kernels, batched
+    chromosome LD expansion, covariate-adjusted marginal screening, chunked
     memory-safe genotype reading, and automatic scaling from small in-memory
     panels to whole-genome sequencing datasets with > 10 million SNPs.
 
 authors:
-  Félicien Akohoue:
+  "Félicien Akohoue":
     href: https://github.com/FAkohoue
 
 navbar:
@@ -88,6 +89,13 @@ reference:
       - find_ld_neighbors
       - expand_important_snps
       - prune_background_snps
+  - title: "Example data"
+    desc: >
+      Synthetic dataset for demonstrating and testing the pipeline.
+      Contains genotype matrix, phenotype vectors, GWAS results, and
+      ground-truth QTN tables for 40 SNPs and 50 samples.
+    contents:
+      - example_optsldp
 
   - title: "Example data"
     desc: >
@@ -104,4 +112,5 @@ articles:
       - OptSLDP-introduction
 
 news:
-  - one_page: true
+  one_page: true
+  cran_dates: false

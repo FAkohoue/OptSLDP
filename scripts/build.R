@@ -51,38 +51,40 @@ list.files("pkgdown/favicon")
 #remove.packages("fs")
 #install.packages("fs")
 
+# 0. Recreate NAMESPACE and man/ from roxygen tags
+
 remove.packages("OptSLDP")
+.rs.restartR()
 
-# install.packages(
-#   c("rlang", "fs", "cli", "glue", "lifecycle",
-#     "roxygen2", "devtools", "pkgdown")
-# )
-
-
-# 1. Regenerate example data (fixes the 'example_sldp' vs 'example_optsldp' mismatch)
+# 2. Recreate NAMESPACE and man/ from roxygen tags
 source("data-raw/generate_example_data.R")
 
-# 2. Regenerate docs (picks up new @importFrom utils head, globalVariables)
+# 3. Recreate NAMESPACE and man/ from roxygen tags
 devtools::document()
 
-# 3. Install, test and check
+# 4. Now compileAttributes will work (DESCRIPTION exists, src/ exists)
+Rcpp::compileAttributes()
+
+# 5. Document again to pick up RcppExports.R
+devtools::document()
+
+# 6. Install
 devtools::install()
 
-ls(asNamespace("OptSLDP"), pattern = "snprelate", all.names = TRUE)
-
-#devtools::install(build_vignettes = FALSE, force = TRUE)
-
+# 7. Test
 devtools::test()
+
+
+# 8. Check
 devtools::check()
 
+# 9. Build vignettes
 
 unloadNamespace("OptSLDP")
 
 pkgdown::clean_site(force = TRUE)
 pkgdown::build_site()
 
-ls(asNamespace("OptSLDP"), all.names = TRUE, pattern = "snprelate")
-exists(".snprelate_call", envir = asNamespace("OptSLDP"), inherits = FALSE)
 
 devtools::build()
 
@@ -97,5 +99,3 @@ pkgdown::build_news()
 # Build home with network disabled at the curl level
 httr2_mock <- function(...) stop("no network", call. = FALSE)
 pkgdown::build_home()
-
-pkgdown::build_site()

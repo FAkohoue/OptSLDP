@@ -4,22 +4,22 @@
 #
 # Coverage
 # --------
-#  1.  compute_maf()            — columns, values, NA handling, zero-variance
-#  2.  filter_snps_by_maf()     — filtering logic, return structure, edge cases
-#  3.  compute_r2_subset()      — symmetry, diagonal, pairwise values, 2-SNP case
-#  4.  find_ld_neighbors()      — above/below threshold, focal excluded, empty
-#  5.  preprune_high_ld()       — removes near-duplicate, keeps independent
-#  6.  prune_background_snps()  — greedy logic, multi-chromosome, trivial case
-#  7.  expand_important_snps()  — positional window, LD layer, no-op candidate
-#  8.  compute_screening_stats()— single-trait columns, multi-trait list, covar,
-#                                  insufficient obs → NA, zero-variance → NA
-#  9.  select_candidate_snps()  — mode A/B/C, AND/OR logic, all-NA, empty result
-# 10.  read_phenotype()         — single trait, multi-trait, sample alignment,
+#  1.  compute_maf()            -- columns, values, NA handling, zero-variance
+#  2.  filter_snps_by_maf()     -- filtering logic, return structure, edge cases
+#  3.  compute_r2_subset()      -- symmetry, diagonal, pairwise values, 2-SNP case
+#  4.  find_ld_neighbors()      -- above/below threshold, focal excluded, empty
+#  5.  preprune_high_ld()       -- removes near-duplicate, keeps independent
+#  6.  prune_background_snps()  -- greedy logic, multi-chromosome, trivial case
+#  7.  expand_important_snps()  -- positional window, LD layer, no-op candidate
+#  8.  compute_screening_stats()-- single-trait columns, multi-trait list, covar,
+#                                  insufficient obs -> NA, zero-variance -> NA
+#  9.  select_candidate_snps()  -- mode A/B/C, AND/OR logic, all-NA, empty result
+# 10.  read_phenotype()         -- single trait, multi-trait, sample alignment,
 #                                  error on missing sample, duplicate IDs
-# 11.  read_numeric_genotype()  — columns, matrix values, chr normalisation
-# 12.  write_numeric_genotype() + write_hapmap_genotype() — round-trip fidelity
-# 13.  write_pruning_report()   — CSV written, summary written, column names
-# 14.  run_sldp() — single-trait mode A, mode B, mode C; QTN retention;
+# 11.  read_numeric_genotype()  -- columns, matrix values, chr normalisation
+# 12.  write_numeric_genotype() + write_hapmap_genotype() -- round-trip fidelity
+# 13.  write_pruning_report()   -- CSV written, summary written, column names
+# 14.  run_sldp() -- single-trait mode A, mode B, mode C; QTN retention;
 #                   multi-trait union protection; output file written;
 #                   pruning_stats step names; scale_strategy in return value
 # ==============================================================================
@@ -31,9 +31,9 @@ library(data.table)
 # Shared fixtures
 # ==============================================================================
 
-# Minimal 6-SNP × 8-sample genotype matrix used across many unit tests.
-# SNP1 and SNP2 are perfectly correlated (r² = 1).
-# SNP5 is all zeros (MAF = 0, variance = 0) — removed by any MAF filter and returns NA stats.
+# Minimal 6-SNP x 8-sample genotype matrix used across many unit tests.
+# SNP1 and SNP2 are perfectly correlated (r^2 = 1).
+# SNP5 is all zeros (MAF = 0, variance = 0) -- removed by any MAF filter and returns NA stats.
 .make_geno <- function() {
   set.seed(1L)
   m <- matrix(
@@ -42,7 +42,7 @@ library(data.table)
       0L,1L,2L,0L,1L,1L,2L,0L,   # SNP2  (identical to SNP1)
       0L,0L,1L,2L,0L,1L,1L,2L,   # SNP3
       2L,1L,0L,1L,2L,0L,1L,1L,   # SNP4
-      0L,0L,0L,0L,0L,0L,0L,0L,   # SNP5  truly monomorphic (all zeros) — var=0 → NA stats; MAF=0 → removed at any threshold>0
+      0L,0L,0L,0L,0L,0L,0L,0L,   # SNP5  truly monomorphic (all zeros) -- var=0 -> NA stats; MAF=0 -> removed at any threshold>0
       1L,2L,0L,1L,0L,2L,1L,1L    # SNP6
     ),
     nrow = 6L, ncol = 8L, byrow = TRUE
@@ -136,7 +136,7 @@ test_that("filter_snps_by_maf returns correct list elements", {
 test_that("filter_snps_by_maf removes monomorphic SNP5", {
   m   <- .make_geno()
   si  <- .make_snp_info()
-  # SNP5 is all zeros (MAF = 0) — removed at any threshold > 0
+  # SNP5 is all zeros (MAF = 0) -- removed at any threshold > 0
   res <- filter_snps_by_maf(si, m, maf_threshold = 0.05)
   expect_false("SNP5" %in% res$snp_info$SNP)
 })
@@ -240,7 +240,7 @@ test_that("find_ld_neighbors returns empty when threshold is very high for unrel
   m    <- .make_geno()
   # SNP3 and SNP6 are on different chromosomes and should not be r2=1
   nbrs <- find_ld_neighbors("SNP3", m, c("SNP3","SNP6"), r2_threshold = 0.9999)
-  # Either empty or only SNP3 filtered out — SNP6 should NOT be r2=1 with SNP3
+  # Either empty or only SNP3 filtered out -- SNP6 should NOT be r2=1 with SNP3
   expect_false("SNP3" %in% nbrs)
 })
 
@@ -259,7 +259,7 @@ test_that("preprune_high_ld removes one of two perfectly correlated SNPs", {
   m  <- .make_geno()
   si <- .make_snp_info()
   res <- preprune_high_ld(si, m, r2_pre = 0.99, verbose = FALSE)
-  # SNP1 and SNP2 are perfectly correlated — at most one should remain
+  # SNP1 and SNP2 are perfectly correlated -- at most one should remain
   retained <- res$snp_info$SNP
   expect_false("SNP1" %in% retained && "SNP2" %in% retained)
 })
@@ -269,7 +269,7 @@ test_that("preprune_high_ld keeps independent SNPs", {
   si <- .make_snp_info()
   res <- preprune_high_ld(si, m, r2_pre = 0.99, verbose = FALSE)
   retained <- res$snp_info$SNP
-  # SNP3, SNP4 on chr1 and SNP6 on chr2 are independent — all should be kept
+  # SNP3, SNP4 on chr1 and SNP6 on chr2 are independent -- all should be kept
   expect_true("SNP3" %in% retained)
   expect_true("SNP4" %in% retained)
   expect_true("SNP6" %in% retained)
@@ -343,7 +343,7 @@ test_that("prune_background_snps keeps at least one SNP per chromosome", {
 test_that("prune_background_snps with r2_genome = 1 keeps all SNPs (no pair achieves r2=1 except SNP1/SNP2)", {
   m  <- .make_geno()
   si <- .make_snp_info()
-  # Threshold of 1: only r2 exactly 1.0 triggers removal — only SNP1/SNP2 pair
+  # Threshold of 1: only r2 exactly 1.0 triggers removal -- only SNP1/SNP2 pair
   out <- prune_background_snps(
     remaining_snps = paste0("SNP", 3:6),
     snp_info       = si,
@@ -383,7 +383,7 @@ test_that("expand_important_snps always includes candidate SNPs themselves", {
 test_that("expand_important_snps positional window includes nearby SNPs", {
   m   <- .make_geno()
   si  <- .make_snp_info()
-  # SNP1 at 10000, SNP2 at 20000 — 50kb window includes both
+  # SNP1 at 10000, SNP2 at 20000 -- 50kb window includes both
   out <- expand_important_snps(
     candidate_snps       = "SNP1",
     snp_info             = si,
@@ -406,7 +406,7 @@ test_that("expand_important_snps does not include SNPs on other chromosomes via 
     include_ld_neighbors = FALSE,
     verbose              = FALSE
   )
-  # SNP5, SNP6 are on chr2 — should NOT be included via positional window
+  # SNP5, SNP6 are on chr2 -- should NOT be included via positional window
   expect_false("SNP5" %in% out)
   expect_false("SNP6" %in% out)
 })
@@ -606,10 +606,10 @@ test_that("select_candidate_snps mode A errors without pval_threshold", {
 test_that("select_candidate_snps mode B OR logic: keeps SNPs passing either criterion", {
   dt  <- .make_stats()
   out <- select_candidate_snps(dt, mode = "B", z_threshold = 8, pve_threshold = 0.10, logic = "OR")
-  # A: |z|=8 >=8 OR PVE=0.10>=0.10 → YES
-  # B: |z|=1 <8 AND PVE=0.005<0.10 → NO
-  # C: |z|=5 <8 AND PVE=0.06 <0.10 → NO  (neither criterion met)
-  # D: |z|=9 >=8 OR PVE=0.12>=0.10 → YES
+  # A: |z|=8 >=8 OR PVE=0.10>=0.10 -> YES
+  # B: |z|=1 <8 AND PVE=0.005<0.10 -> NO
+  # C: |z|=5 <8 AND PVE=0.06 <0.10 -> NO  (neither criterion met)
+  # D: |z|=9 >=8 OR PVE=0.12>=0.10 -> YES
   expect_true("A" %in% out)
   expect_true("D" %in% out)
   expect_false("B" %in% out)
@@ -618,9 +618,9 @@ test_that("select_candidate_snps mode B OR logic: keeps SNPs passing either crit
 test_that("select_candidate_snps mode B AND logic: requires both criteria", {
   dt  <- .make_stats()
   out <- select_candidate_snps(dt, mode = "B", z_threshold = 5, pve_threshold = 0.10, logic = "AND")
-  # A: |z|=8>=5 AND PVE=0.10>=0.10 → YES
-  # C: |z|=5>=5 AND PVE=0.06<0.10  → NO
-  # D: |z|=9>=5 AND PVE=0.12>=0.10 → YES
+  # A: |z|=8>=5 AND PVE=0.10>=0.10 -> YES
+  # C: |z|=5>=5 AND PVE=0.06<0.10  -> NO
+  # D: |z|=9>=5 AND PVE=0.12>=0.10 -> YES
   expect_true("A" %in% out)
   expect_true("D" %in% out)
   expect_false("C" %in% out)
@@ -640,10 +640,10 @@ test_that("select_candidate_snps mode C combines pval and z_score with OR", {
     pval_threshold = 0.01, z_threshold = 5,
     logic = "OR"
   )
-  # A: p=0.001<=0.01 OR |z|=8>=5  → YES
-  # B: p=0.800>0.01  AND |z|=1<5  → NO
-  # C: p=0.04 >0.01  OR  |z|=5>=5 → YES (z criterion met)
-  # D: p=0.002<=0.01 OR  |z|=9>=5 → YES
+  # A: p=0.001<=0.01 OR |z|=8>=5  -> YES
+  # B: p=0.800>0.01  AND |z|=1<5  -> NO
+  # C: p=0.04 >0.01  OR  |z|=5>=5 -> YES (z criterion met)
+  # D: p=0.002<=0.01 OR  |z|=9>=5 -> YES
   expect_true("A" %in% out)
   expect_false("B" %in% out)
   expect_true("C" %in% out)
@@ -745,7 +745,7 @@ test_that("read_numeric_genotype snp_info has required columns", {
   expect_true(all(c("SNP","CHR","POS","REF","ALT") %in% names(out$snp_info)))
 })
 
-test_that("read_numeric_genotype dimensions: 40 SNPs × 50 samples", {
+test_that("read_numeric_genotype dimensions: 40 SNPs x 50 samples", {
   f   <- system.file("extdata","example_genotypes_numeric.csv", package = "OptSLDP")
   out <- read_numeric_genotype(f)
   expect_equal(nrow(out$geno_mat), 40L)
@@ -779,7 +779,7 @@ test_that("read_numeric_genotype sample_ids match colnames of geno_mat", {
 
 
 # ==============================================================================
-# 12.  write_numeric_genotype() + write_hapmap_genotype()  —  round-trip
+# 12.  write_numeric_genotype() + write_hapmap_genotype()  --  round-trip
 # ==============================================================================
 
 test_that("write_numeric_genotype round-trip preserves SNP metadata columns", {
@@ -991,7 +991,7 @@ test_that("read_numeric_genotype clean_malformed=TRUE gives same SNPs as FALSE",
 
 
 # ==============================================================================
-# 14.  run_sldp()  — integration tests using package example data
+# 14.  run_sldp()  -- integration tests using package example data
 # ==============================================================================
 
 geno_file  <- system.file("extdata","example_genotypes_numeric.csv",
@@ -1363,7 +1363,7 @@ test_that("run_sldp multi-trait: SNP020 (Trait2-only singleton QTN) in final pan
   if ("SNP020" %in% res$candidate_snps_per_trait$Trait2) {
     expect_true("SNP020" %in% res$final_snp_info$SNP)
   } else {
-    skip("SNP020 not a Trait2 candidate at this threshold — skip union test")
+    skip("SNP020 not a Trait2 candidate at this threshold -- skip union test")
   }
 })
 
@@ -1421,4 +1421,178 @@ test_that("run_sldp writes summary TXT when summary_output_file is set", {
   lines <- readLines(summ_file)
   expect_gt(length(lines), 0L)
   file.remove(summ_file)
+})
+
+
+# ==============================================================================
+# 15.  C++ kernel functions and vectorised screening
+# ==============================================================================
+
+# Helper: check for compiled shared library on disk -- works with load_all(),
+# test_package(), devtools::test(), and R CMD check alike.
+.cpp_compiled <- function() {
+  # Check every possible library location for the compiled OptSLDP shared lib.
+  # We cannot use find.package() because devtools::test() runs with the source
+  # directory on the search path, which has no libs/ subdirectory.
+  dll_names <- c(
+    file.path("libs", "x64",    "OptSLDP.dll"),
+    file.path("libs", "i386",   "OptSLDP.dll"),
+    file.path("libs",            "OptSLDP.so"),
+    file.path("libs",            "OptSLDP.dylib")
+  )
+  all_libs <- unique(c(
+    .libPaths(),
+    strsplit(Sys.getenv("R_LIBS_USER", ""), .Platform$path.sep)[[1]],
+    strsplit(Sys.getenv("R_LIBS",      ""), .Platform$path.sep)[[1]],
+    Sys.getenv("R_LIBS_SITE", "")
+  ))
+  all_libs <- all_libs[nzchar(all_libs) & dir.exists(all_libs)]
+  for (lib in all_libs)
+    for (dll in dll_names)
+      if (file.exists(file.path(lib, "OptSLDP", dll))) return(TRUE)
+  # Last resort: check if the exported C++ function is callable
+  f <- tryCatch(
+    get("r2_subset_cpp", envir = asNamespace("OptSLDP"), inherits = FALSE),
+    error = function(e) NULL
+  )
+  is.function(f) && is.primitive(f) || is.function(f) && !is.null(body(f)) &&
+    grepl(".Call", deparse(body(f))[1], fixed = TRUE)
+}
+
+# -- 15.1  r2_subset_cpp() -- full-matrix equivalence -------------------------
+# Note: r2_matrix_cpp is an internal helper in ld.R (not a C++ export).
+# The exported C++ functions are: r2_subset_cpp, above_threshold_subset_cpp,
+# greedy_prune_r2_cpp. We test r2_subset_cpp against .r2_tcrossprod (pure R).
+
+# -- 15.2  r2_subset_cpp() ---------------------------------------------------
+
+test_that("r2_subset_cpp returns correct dimensions", {
+  skip_if_not(.cpp_compiled(), "C++ kernel not compiled -- skipping")
+  m    <- .make_geno()
+  cand <- c(1L, 3L)   # SNP1, SNP3 (1-based)
+  r2   <- OptSLDP:::r2_subset_cpp(m, cand)
+  expect_equal(nrow(r2), length(cand))
+  expect_equal(ncol(r2), nrow(m))
+})
+
+test_that("r2_subset_cpp self-pairs are 1 for polymorphic candidates", {
+  skip_if_not(.cpp_compiled(), "C++ kernel not compiled -- skipping")
+  m    <- .make_geno()
+  cand <- c(1L, 3L)
+  r2   <- OptSLDP:::r2_subset_cpp(m, cand)
+  expect_equal(r2[1, 1], 1, tolerance = 1e-10)   # SNP1 vs SNP1
+  expect_equal(r2[2, 3], 1, tolerance = 1e-10)   # SNP3 vs SNP3
+})
+
+test_that("r2_subset_cpp matches .r2_tcrossprod for candidate rows", {
+  skip_if_not(.cpp_compiled(), "C++ kernel not compiled -- skipping")
+  m    <- .make_geno()
+  # Use the pure-R .r2_tcrossprod as reference (always available)
+  full <- OptSLDP:::.r2_tcrossprod(m)
+  cand <- c(1L, 3L)   # SNP1, SNP3
+  sub  <- OptSLDP:::r2_subset_cpp(m, cand)
+  # Row 1 of sub (SNP1) should match row SNP1 of full r2 matrix
+  ok <- !is.na(sub[1, ]) & !is.na(full["SNP1", ])
+  expect_equal(sub[1, ok], full["SNP1", ok], tolerance = 1e-8,
+               ignore_attr = TRUE)
+})
+
+# -- 15.3  above_threshold_subset_cpp() ----------------------------------------
+
+test_that("above_threshold_subset_cpp returns a 2-column integer matrix", {
+  skip_if_not(.cpp_compiled(), "C++ kernel not compiled -- skipping")
+  m    <- .make_geno()
+  r2   <- OptSLDP:::r2_subset_cpp(m, c(1L, 2L))
+  out  <- OptSLDP:::above_threshold_subset_cpp(r2, 0.9, TRUE)
+  expect_true(is.matrix(out))
+  expect_equal(ncol(out), 2L)
+  expect_equal(colnames(out), c("row", "col"))
+})
+
+test_that("above_threshold_subset_cpp finds SNP1-SNP2 pair at threshold 0.9", {
+  skip_if_not(.cpp_compiled(), "C++ kernel not compiled -- skipping")
+  m   <- .make_geno()
+  # Only candidates: SNP1 (row 1), SNP2 (row 2)
+  r2  <- OptSLDP:::r2_subset_cpp(m, c(1L, 2L))
+  out <- OptSLDP:::above_threshold_subset_cpp(r2, 0.9, TRUE)
+  # SNP1 (cand row 1) should be above 0.9 with SNP2 (col 2)
+  expect_true(nrow(out) > 0L)
+})
+
+# -- 15.4  greedy_prune_r2_cpp() -----------------------------------------------
+
+test_that("greedy_prune_r2_cpp retains at least one SNP", {
+  skip_if_not(.cpp_compiled(), "C++ kernel not compiled -- skipping")
+  m    <- .make_geno()
+  sub  <- m[c("SNP1","SNP2","SNP3"), , drop = FALSE]
+  r2   <- compute_r2_subset(sub, rownames(sub))
+  keep <- OptSLDP:::greedy_prune_r2_cpp(r2, 0.9)
+  expect_type(keep, "logical")
+  expect_equal(length(keep), nrow(sub))
+  expect_true(any(keep))
+})
+
+test_that("greedy_prune_r2_cpp removes SNP2 when SNP1-SNP2 r2=1 and threshold<1", {
+  skip_if_not(.cpp_compiled(), "C++ kernel not compiled -- skipping")
+  m    <- .make_geno()
+  sub  <- m[c("SNP1","SNP2"), , drop = FALSE]
+  r2   <- compute_r2_subset(sub, rownames(sub))
+  keep <- OptSLDP:::greedy_prune_r2_cpp(r2, 0.9)
+  # SNP1 is first so it is kept; SNP2 (r2=1 with SNP1) is removed
+  expect_true(keep[1])    # SNP1 kept
+  expect_false(keep[2])   # SNP2 pruned
+})
+
+test_that("greedy_prune_r2_cpp agrees with pure-R greedy loop", {
+  skip_if_not(.cpp_compiled(), "C++ kernel not compiled -- skipping")
+  m   <- .make_geno()
+  sub <- m[c("SNP1","SNP2","SNP3","SNP4"), , drop = FALSE]
+  r2  <- compute_r2_subset(sub, rownames(sub))
+
+  # C++ result
+  keep_cpp <- greedy_prune_r2_cpp(r2, 0.5)
+
+  # Pure-R equivalent
+  n       <- nrow(r2)
+  keep_r  <- rep(TRUE, n)
+  for (i in seq_len(n)) {
+    if (!keep_r[i]) next
+    hi <- which(r2[i, ] >= 0.5)
+    hi <- hi[hi > i]
+    if (length(hi)) keep_r[hi] <- FALSE
+  }
+  expect_equal(keep_cpp, keep_r)
+})
+
+# -- 15.5  Vectorised screening matches lm() results --------------------------
+
+test_that("vectorised screening beta matches lm() within tolerance", {
+  set.seed(99L)
+  m <- .make_geno()
+  y <- .make_phenotype()
+
+  # Vectorised result
+  stats_vec <- compute_screening_stats(m, y = y, verbose = FALSE)
+
+  # Reference: per-SNP lm() for a non-monomorphic SNP
+  snp_id <- "SNP1"
+  g  <- as.numeric(m[snp_id, ])
+  ok <- is.finite(g) & is.finite(y)
+  fit <- stats::lm(y[ok] ~ g[ok])
+  beta_lm <- unname(coef(fit)[2L])
+  se_lm   <- unname(summary(fit)$coefficients[2L, 2L])
+
+  beta_vec <- unname(stats_vec$beta[stats_vec$SNP == snp_id])
+  se_vec   <- unname(stats_vec$SE[stats_vec$SNP == snp_id])
+
+  expect_equal(beta_vec, beta_lm, tolerance = 1e-6)
+  expect_equal(se_vec,   se_lm,   tolerance = 1e-6)
+})
+
+test_that("vectorised screening p-values are in (0,1] for polymorphic SNPs", {
+  m   <- .make_geno()
+  y   <- .make_phenotype()
+  out <- compute_screening_stats(m, y = y, verbose = FALSE)
+  p   <- out$P.value[!is.na(out$P.value)]
+  expect_true(all(p > 0 & p <= 1))
 })

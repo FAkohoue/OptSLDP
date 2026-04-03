@@ -1,0 +1,8 @@
+# src/Makevars.win
+# Windows-specific Makefile for linking RcppArmadillo against R's BLAS/LAPACK.
+# On Windows, Armadillo needs explicit linking to R's BLAS and LAPACK DLLs.
+# This file is used by R CMD INSTALL on Windows only; on Linux/macOS the
+# default Makevars (or no Makevars) is sufficient because R's BLAS is found
+# automatically via the shared library search path.
+
+PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)

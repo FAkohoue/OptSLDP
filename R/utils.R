@@ -7,7 +7,9 @@
 # in := and setorder() calls, and about utils::head used internally.
 #' @importFrom utils head
 utils::globalVariables(c("SNP", "CHR", "POS", "REF", "ALT",
-                         "neg_log_p", "is_qtn", "P.value"))
+                         "neg_log_p", "is_qtn", "P.value",
+                         "start",
+                         "end"))
 
 #' Null-coalescing operator
 #'

@@ -26,6 +26,7 @@ Depends:
 Imports:
     data.table (>= 1.14.0),
     parallel,
+    Rcpp (>= 1.0.0),
     stats,
     tools
 Suggests:
@@ -40,6 +41,9 @@ Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://FAkohoue.github.io/OptSLDP, https://github.com/FAkohoue/OptSLDP
