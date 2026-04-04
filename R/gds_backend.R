@@ -282,10 +282,11 @@
     SNPRelate::snpgdsLDpruning,
     genofile,
     snp.id       = snp_ids,
-    ld.threshold = sqrt(r2_pre),
+    ld.threshold = sqrt(r2_pre),   # sqrt because snpgdsLDpruning uses |r|, not r^2
     slide.max.bp = slide_max_bp,
     slide.max.n  = -1L,
     missing.rate = 0.10,
+    method       = "corr",         # Pearson r -- consistent with r2 used elsewhere
     n_cores      = n_cores
   )
   kept
@@ -313,10 +314,11 @@
     SNPRelate::snpgdsLDpruning,
     genofile,
     snp.id       = snp_ids,
-    ld.threshold = sqrt(r2_genome),
+    ld.threshold = sqrt(r2_genome),   # sqrt because snpgdsLDpruning uses |r|, not r^2
     slide.max.bp = slide_max_bp,
     slide.max.n  = -1L,
     missing.rate = 0.10,
+    method       = "corr",            # Pearson r -- consistent with r2 used elsewhere
     n_cores      = n_cores
   )
 }

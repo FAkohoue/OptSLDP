@@ -590,11 +590,18 @@ run_sldp <- function(genotype_file,
   # GDS strategy: write directly from GDS chromosome by chromosome -- never
   # load the full final panel into RAM. final_geno_mat is returned as NULL.
   # In-memory/chunked: slice the already-loaded matrix (cheap).
+  #
+  # IMPORTANT: reopen GDS before writing. The FORK cluster in step 9
+  # (parallel background pruning) shares file descriptors with the parent
+  # process. After the cluster closes, the parent's GDS handle may be in
+  # an invalid state. Reopening guarantees a clean handle for step 11.
   .report_progress("[11] Writing output to: ", output_file, verbose = verbose)
 
   if (identical(strategy, "gds")) {
-    # Stream-write by chromosome: extract one chromosome at a time, write
-    # its rows to the output file, free RAM before the next chromosome.
+    # Reopen GDS with a fresh handle -- safe after FORK workers have exited
+    .close_gds(ctx$genofile, key = "main")
+    ctx$genofile <- .open_gds(ctx$gds_path, key = "main_write")
+
     chr_levels <- unique(final_snp_info$CHR)
     first_chr  <- TRUE
     for (chr_i in chr_levels) {
@@ -604,9 +611,17 @@ run_sldp <- function(genotype_file,
         .extract_geno_gds(ctx$genofile,
                           snp_ids    = chr_snp_ids,
                           sample_ids = g$sample_ids),
-        error = function(e) NULL
+        error = function(e) {
+          warning("Step 11: failed to extract chromosome ", chr_i,
+                  ": ", e$message, call. = FALSE)
+          NULL
+        }
       )
-      if (is.null(geno_chr)) next
+      if (is.null(geno_chr)) {
+        warning("Step 11: skipped chromosome ", chr_i,
+                " -- no genotypes extracted", call. = FALSE)
+        next
+      }
 
       if (identical(output_format, "numeric")) {
         # For first chromosome write header + rows; subsequent append rows only

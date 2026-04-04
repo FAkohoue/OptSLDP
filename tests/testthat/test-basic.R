@@ -1596,3 +1596,52 @@ test_that("vectorised screening p-values are in (0,1] for polymorphic SNPs", {
   p   <- out$P.value[!is.na(out$P.value)]
   expect_true(all(p > 0 & p <= 1))
 })
+
+# ==============================================================================
+# Section 16 -- GDS strategy end-to-end output test
+# ==============================================================================
+# Forces scale_strategy = "gds" on the small example dataset to exercise the
+# full GDS path: chunked screening -> expansion -> parallel pruning -> step 11
+# file writer. This catches the FORK-cluster GDS handle corruption bug.
+
+test_that("GDS strategy writes output file and returns correct structure", {
+  skip_if_not_installed("SNPRelate")
+  skip_if_not_installed("gdsfmt")
+
+  out_file <- tempfile(fileext = ".hmp.txt")
+
+  res <- run_sldp(
+    genotype_file  = geno_file,
+    phenotype_file = pheno_file,
+    output_file    = out_file,
+    trait_col      = "Trait1",
+    mode           = "A",
+    pval_threshold = 0.20,        # loose threshold: tiny 40-SNP dataset
+    output_format  = "hapmap",
+    scale_strategy = "gds",       # force GDS even on small panel
+    gds_dir        = tempdir(),
+    preprune_large = FALSE,        # skip pre-pruning to keep candidates non-zero
+    verbose        = FALSE
+  )
+
+  # Output file must exist on disk
+  expect_true(file.exists(out_file),
+              info = "GDS step 11 must create the output file")
+
+  # File must have correct dimensions
+  hmp <- data.table::fread(out_file, sep = "\t", header = TRUE)
+  expect_equal(nrow(hmp), nrow(res$final_snp_info),
+               info = "HapMap row count must match final_snp_info")
+  expect_true(ncol(hmp) > 11L,
+              info = "HapMap must have 11 metadata cols + sample cols")
+
+  # GDS runs never load the full matrix into RAM
+  expect_null(res$final_geno_mat,
+              info = "final_geno_mat must be NULL for GDS runs")
+
+  # SNP info must be ordered by CHR, POS
+  expect_true(
+    all(diff(res$final_snp_info$POS[res$final_snp_info$CHR == 1]) >= 0),
+    info = "SNPs must be ordered by position within each chromosome"
+  )
+})

@@ -13,43 +13,47 @@ OptSLDP improves on that foundation in four concrete ways:
 1.  **Memory-safe chunked reading** — genotype files are read in
     fixed-size row chunks with a pre-allocated output matrix, so peak
     RAM is proportional to one chunk rather than twice the full file.
-
 2.  **Explicit per-chromosome garbage collection** — `gc(FALSE)` is
     called after each chromosome’s LD matrix is released in both the
     pre-pruning and background-pruning loops, preventing heap
     fragmentation across 20-30 chromosome passes.
-
 3.  **Multi-trait union protection** — screening and candidate selection
     run independently for each trait; the union of all per-trait
     candidate sets is expanded and protected, so every SNP important for
     *any* trait is retained in the final panel.
-
 4.  **Covariate-adjusted marginal screening** — phenotypes are
     residualised on shared covariates once before the SNP scan
     (equivalent to including covariates in every marginal regression but
     computed in a single [`lm()`](https://rdrr.io/r/stats/lm.html)
     call), which correctly adjusts effect estimates for population
     structure or other confounders.
-
 5.  **Vectorised OLS screening** — marginal regressions use matrix
     algebra (`tcrossprod` via BLAS DGEMM) instead of per-SNP
     [`lm()`](https://rdrr.io/r/stats/lm.html) calls, giving 50-200x
     speedup for the screening step.
-
 6.  **C++ LD kernel** — pairwise r^2 computation, candidate-subset LD
     matrices, sparse threshold scanning, and greedy pruning all run in
     compiled C++ (RcppArmadillo), eliminating R interpreter overhead
     entirely.
-
 7.  **C++ screening kernel** — `screen_chunk_cpp()` computes OLS
     statistics in a single compiled pass per SNP chunk, reusing genotype
     variance across traits (2-4x faster than R matrix algebra).
-
 8.  **Batched chromosome LD expansion** — the important-SNP expansion
     loop extracts genotypes once per chromosome using
     [`data.table::foverlaps()`](https://rdrr.io/pkg/data.table/man/foverlaps.html)
     for O(n log n) positional joins, reducing GDS reads from thousands
     to one per chromosome.
+9.  **Chromosome-streaming screening** — step 6 extracts and screens one
+    chromosome chunk at a time in GDS mode, accumulating only statistics
+    (never the full matrix), reducing peak RAM from ~4 GB to ~300 MB for
+    2.65M SNP datasets.
+10. **Chromosome-streaming output writing** — step 11 writes the final
+    panel chromosome by chromosome from GDS, keeping peak RAM
+    proportional to one chromosome rather than the full final panel.
+11. **Parallel background pruning** — step 9 processes chromosomes
+    simultaneously using FORK workers on Linux (one GDS handle per
+    worker), reducing background pruning time from ~66 minutes to ~8
+    minutes for 11-chromosome rice WGS data.
 
 OptSLDP is also inspired by the genome-wide association study-derived
 marker weighting approach of Akohoue et al. (2026) for blast resistance

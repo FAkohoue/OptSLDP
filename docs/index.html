@@ -88,19 +88,33 @@
 </h1>
 </div>
 <p align="center">
-<img src="reference/figures/logo.png" alt="OptSLDP logo" width="160px"></p>
+<img src="reference/figures/logo.png" alt="OptSLDP logo" width="180px"></p>
 <!-- badges: start -->
 
 <p><code>OptSLDP</code> is an <strong>optimized and extended</strong> implementation of Selective Linkage Disequilibrium Pruning for genomic prediction panel construction. The core idea of SLDP — preserving all markers in strong LD with statistically important SNPs so that genomic models retain the full genetic signal around each QTL, while pruning redundant background markers — is retained from the original algorithm of Zhu et al. (2023). OptSLDP improves on that foundation in four concrete ways:</p>
 <ol style="list-style-type: decimal">
-<li><p><strong>Memory-safe chunked reading</strong> — genotype files are read in fixed-size row chunks with a pre-allocated output matrix, so peak RAM is proportional to one chunk rather than twice the full file.</p></li>
-<li><p><strong>Explicit per-chromosome garbage collection</strong> — <code>gc(FALSE)</code> is called after each chromosome’s LD matrix is released in both the pre-pruning and background-pruning loops, preventing heap fragmentation across 20-30 chromosome passes.</p></li>
-<li><p><strong>Multi-trait union protection</strong> — screening and candidate selection run independently for each trait; the union of all per-trait candidate sets is expanded and protected, so every SNP important for <em>any</em> trait is retained in the final panel.</p></li>
-<li><p><strong>Covariate-adjusted marginal screening</strong> — phenotypes are residualised on shared covariates once before the SNP scan (equivalent to including covariates in every marginal regression but computed in a single <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> call), which correctly adjusts effect estimates for population structure or other confounders.</p></li>
-<li><p><strong>Vectorised OLS screening</strong> — marginal regressions use matrix algebra (<code>tcrossprod</code> via BLAS DGEMM) instead of per-SNP <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> calls, giving 50-200x speedup for the screening step.</p></li>
-<li><p><strong>C++ LD kernel</strong> — pairwise r^2 computation, candidate-subset LD matrices, sparse threshold scanning, and greedy pruning all run in compiled C++ (RcppArmadillo), eliminating R interpreter overhead entirely.</p></li>
-<li><p><strong>C++ screening kernel</strong> — <code>screen_chunk_cpp()</code> computes OLS statistics in a single compiled pass per SNP chunk, reusing genotype variance across traits (2-4x faster than R matrix algebra).</p></li>
-<li><p><strong>Batched chromosome LD expansion</strong> — the important-SNP expansion loop extracts genotypes once per chromosome using <code><a href="https://rdrr.io/pkg/data.table/man/foverlaps.html" class="external-link">data.table::foverlaps()</a></code> for O(n log n) positional joins, reducing GDS reads from thousands to one per chromosome.</p></li>
+<li>
+<strong>Memory-safe chunked reading</strong> — genotype files are read in fixed-size row chunks with a pre-allocated output matrix, so peak RAM is proportional to one chunk rather than twice the full file.</li>
+<li>
+<strong>Explicit per-chromosome garbage collection</strong> — <code>gc(FALSE)</code> is called after each chromosome’s LD matrix is released in both the pre-pruning and background-pruning loops, preventing heap fragmentation across 20-30 chromosome passes.</li>
+<li>
+<strong>Multi-trait union protection</strong> — screening and candidate selection run independently for each trait; the union of all per-trait candidate sets is expanded and protected, so every SNP important for <em>any</em> trait is retained in the final panel.</li>
+<li>
+<strong>Covariate-adjusted marginal screening</strong> — phenotypes are residualised on shared covariates once before the SNP scan (equivalent to including covariates in every marginal regression but computed in a single <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> call), which correctly adjusts effect estimates for population structure or other confounders.</li>
+<li>
+<strong>Vectorised OLS screening</strong> — marginal regressions use matrix algebra (<code>tcrossprod</code> via BLAS DGEMM) instead of per-SNP <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> calls, giving 50-200x speedup for the screening step.</li>
+<li>
+<strong>C++ LD kernel</strong> — pairwise r^2 computation, candidate-subset LD matrices, sparse threshold scanning, and greedy pruning all run in compiled C++ (RcppArmadillo), eliminating R interpreter overhead entirely.</li>
+<li>
+<strong>C++ screening kernel</strong> — <code>screen_chunk_cpp()</code> computes OLS statistics in a single compiled pass per SNP chunk, reusing genotype variance across traits (2-4x faster than R matrix algebra).</li>
+<li>
+<strong>Batched chromosome LD expansion</strong> — the important-SNP expansion loop extracts genotypes once per chromosome using <code><a href="https://rdrr.io/pkg/data.table/man/foverlaps.html" class="external-link">data.table::foverlaps()</a></code> for O(n log n) positional joins, reducing GDS reads from thousands to one per chromosome.</li>
+<li>
+<strong>Chromosome-streaming screening</strong> — step 6 extracts and screens one chromosome chunk at a time in GDS mode, accumulating only statistics (never the full matrix), reducing peak RAM from ~4 GB to ~300 MB for 2.65M SNP datasets.</li>
+<li>
+<strong>Chromosome-streaming output writing</strong> — step 11 writes the final panel chromosome by chromosome from GDS, keeping peak RAM proportional to one chromosome rather than the full final panel.</li>
+<li>
+<strong>Parallel background pruning</strong> — step 9 processes chromosomes simultaneously using FORK workers on Linux (one GDS handle per worker), reducing background pruning time from ~66 minutes to ~8 minutes for 11-chromosome rice WGS data.</li>
 </ol>
 <p>OptSLDP is also inspired by the genome-wide association study-derived marker weighting approach of Akohoue et al. (2026) for blast resistance prediction in rice, and scales automatically from small in-memory panels to whole-genome sequencing datasets with more than 10 million SNPs.</p>
 <hr>
@@ -141,13 +155,13 @@
 <p>Install from GitHub with vignettes (recommended):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Install without vignettes for a faster install:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -156,11 +170,11 @@
 <code class="sourceCode R"><span><span class="co"># VCF input support (Bioconductor)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
 <span>                       <span class="st">"SummarizedExperiment"</span>, <span class="st">"Biostrings"</span>, <span class="st">"S4Vectors"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Large-panel GDS backend (&gt; 2 M SNPs, Bioconductor)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Bioconductor packages are not installed automatically by <code>remotes</code> — run the blocks above once if you need VCF support or plan to work with whole-genome panels.</p>
 <hr>
 </div>

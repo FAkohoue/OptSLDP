@@ -44,6 +44,13 @@ expand_important_snps <- function(candidate_snps,
   n_cands   <- length(candidate_snps)
   use_gds   <- !is.null(ctx) && identical(ctx$strategy, "gds")
 
+  # Guard: no candidates -> return empty character vector immediately
+  if (n_cands == 0L) {
+    .report_progress("Expanding 0 candidate SNPs -- returning empty set",
+                     verbose = verbose)
+    return(character(0L))
+  }
+
   .report_progress(
     "Expanding ", n_cands,
     " candidate SNPs (window = +/-", window_kb, " kb",
@@ -254,26 +261,81 @@ prune_background_snps <- function(remaining_snps,
 
   # -- GDS path -----------------------------------------------------------------
   if (!is.null(ctx) && identical(ctx$strategy, "gds")) {
-    for (chr in unique(rem_info$CHR)) {
+    chr_levels <- unique(rem_info$CHR)
+    gds_path   <- ctx$gds_path
+
+    # Parallelise across chromosomes using FORK workers (Linux/macOS only).
+    # Each worker opens its own GDS file handle -- GDS handles are NOT
+    # thread-safe so the main handle (ctx$genofile) is never shared.
+    # On Windows falls back to sequential processing.
+    n_chr     <- length(chr_levels)
+    n_workers <- if (.Platform$OS.type == "unix")
+      min(n_chr, max(1L, ctx$n_cores))
+    else 1L
+
+    # When parallelising across chromosomes give each worker 1 thread
+    # (total threads = n_workers * 1 ~ n_cores). When sequential give
+    # all threads to SNPRelate for each chromosome.
+    threads_per_chr <- if (n_workers > 1L) 1L else ctx$n_cores
+
+    .report_progress(
+      "  Parallelising across ", n_workers, " chromosome workers",
+      " (", threads_per_chr, " thread(s) per chromosome)",
+      verbose = verbose && n_workers > 1L
+    )
+
+    prune_one_chr <- function(chr) {
       chr_snps <- rem_info$SNP[rem_info$CHR == chr]
-      .report_progress(
-        "  Background pruning chromosome ", chr,
-        " (", length(chr_snps), " SNPs) [GDS]",
-        verbose = verbose
+      if (length(chr_snps) <= 1L) return(chr_snps)
+
+      # Each worker opens its own independent read-only GDS handle.
+      # FORK workers inherit the parent namespace so .prune_background_chr_gds
+      # and .snprelate_call are available without re-loading the package.
+      # allow.fork = TRUE is required to suppress SNPRelate's fork warning.
+      gf <- tryCatch(
+        SNPRelate::snpgdsOpen(gds_path, readonly = TRUE, allow.fork = TRUE),
+        error = function(e) stop("Worker failed to open GDS: ", e$message)
       )
-      if (length(chr_snps) <= 1L) {
-        kept_all <- c(kept_all, chr_snps)
-        next
-      }
-      kept <- .prune_background_chr_gds(
-        ctx$genofile, chr_snps,
+      on.exit(tryCatch(SNPRelate::snpgdsClose(gf),
+                       error = function(e) NULL), add = TRUE)
+
+      .prune_background_chr_gds(
+        gf, chr_snps,
         r2_genome    = r2_genome,
         slide_max_bp = slide_max_bp,
-        n_cores      = ctx$n_cores
+        n_cores      = threads_per_chr
       )
-      kept_all <- c(kept_all, kept)
     }
-    return(unique(kept_all))
+
+    if (n_workers > 1L) {
+      # FORK cluster: shared memory, no data serialisation overhead
+      cl <- parallel::makeCluster(n_workers, type = "FORK")
+      on.exit(parallel::stopCluster(cl), add = TRUE)
+
+      # FORK workers inherit rem_info, r2_genome, slide_max_bp, gds_path,
+      # threads_per_chr, and all package internals from the parent process.
+      results <- parallel::parLapply(cl, chr_levels, function(chr) {
+        n_chr_snps <- length(rem_info$SNP[rem_info$CHR == chr])
+        message(format(Sys.time(), "[%Y-%m-%d %H:%M:%S]"),
+                "  Background pruning chromosome ", chr,
+                " (", n_chr_snps, " SNPs) [GDS parallel]")
+        prune_one_chr(chr)
+      })
+    } else {
+      # Sequential fallback (Windows or single core)
+      results <- lapply(chr_levels, function(chr) {
+        chr_snps <- rem_info$SNP[rem_info$CHR == chr]
+        .report_progress(
+          "  Background pruning chromosome ", chr,
+          " (", length(chr_snps), " SNPs) [GDS]",
+          verbose = verbose
+        )
+        prune_one_chr(chr)
+      })
+    }
+
+    kept_all <- unique(unlist(results, use.names = FALSE))
+    return(kept_all)
   }
 
   # -- In-memory path ------------------------------------------------------------

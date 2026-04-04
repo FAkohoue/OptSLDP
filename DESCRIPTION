@@ -1,18 +1,25 @@
 Package: OptSLDP
-Title: OptSLDP: An Optimized Selective Linkage Disequilibrium Pruning Pipeline
+Title: An Optimized Selective Linkage Disequilibrium Pruning Pipeline
 Version: 0.1.0
 Authors@R: person("Félicien", "Akohoue", role = c("aut", "cre"),
-    email = "akohoue.f@gmail.com")
+    email = "akohoue.f@gmail.com",
+    comment = c(ORCID = ""))
 Description: Implements OptSLDP, an optimized and extended version of the
     Selective Linkage Disequilibrium Pruning (SLDP) pipeline for genomic
     prediction panel construction. OptSLDP improves on the original SLDP
-    algorithm (Zhu et al., 2023) by introducing chunked memory-safe genotype
-    reading, explicit per-chromosome garbage collection, multi-trait union
-    protection, and covariate-adjusted marginal screening. Supports three input
-    formats (numeric dosage, HapMap, VCF), three candidate selection modes
-    (p-value, z-score, PVE), positional and LD-based expansion of protected
-    marker sets, and chromosome-wise background pruning. Includes stream-cleaning of malformed genotype files for all supported
-    formats. Scales automatically from small panels (in-memory) to
+    algorithm (Zhu et al., 2023) with the following enhancements: chunked
+    memory-safe genotype reading; explicit per-chromosome garbage collection;
+    multi-trait union protection; covariate-adjusted marginal screening;
+    vectorised OLS via BLAS DGEMM; a compiled C++ LD kernel (r^2 computation,
+    threshold scanning, greedy pruning); a compiled C++ screening kernel with
+    genotype-variance caching across traits; chromosome-streaming screening
+    that accumulates only statistics without loading full genotype matrices;
+    chromosome-streaming output writing; and parallel background pruning via
+    independent per-worker GDS handles. Supports three input formats (numeric
+    dosage, HapMap, VCF), three candidate selection modes (p-value, z-score,
+    PVE), positional and LD-based expansion of protected marker sets,
+    chromosome-wise background pruning, and stream-cleaning of malformed
+    genotype files. Scales automatically from small panels (in-memory) to
     whole-genome sequencing data with more than 10 million SNPs via a
     GDS/SNPRelate disk-backed backend. References:
     Zhu et al. (2023) <doi:10.1186/s12711-023-00843-w>;

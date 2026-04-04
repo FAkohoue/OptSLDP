@@ -44,7 +44,11 @@ The final panel is \\\mathcal{I} \cup \text{retained}(\mathcal{B})\\.
 | Covariate-adjusted screening | Phenotypes are residualised on shared covariates once before the SNP scan, equivalent to fitting covariates in every marginal regression |
 | Vectorised OLS screening | Matrix algebra (`tcrossprod` via BLAS DGEMM) replaces per-SNP [`lm()`](https://rdrr.io/r/stats/lm.html) calls; 50-200x faster for large panels |
 | C++ LD kernel | `r2_subset_cpp()`, `above_threshold_subset_cpp()`, `greedy_prune_r2_cpp()` compiled via RcppArmadillo; zero R interpreter overhead |
+| C++ screening kernel | `screen_chunk_cpp()` single-pass OLS per chunk; genotype variance computed once and reused across all traits; 2-4x faster than R matrix algebra |
 | Batched LD expansion | Genotypes extracted once per chromosome; `foverlaps()` O(n log n) joins replace O(n^2) loops; GDS reads reduced from thousands to ~11 |
+| Chromosome-streaming screening | Step 6 extracts and screens one 50k-SNP chunk at a time in GDS mode; peak RAM ~300 MB vs ~4 GB for full extraction |
+| Chromosome-streaming output | Step 11 writes final panel chromosome-by-chromosome from GDS; `final_geno_mat` is `NULL` for GDS runs |
+| Parallel background pruning | Step 9 uses FORK workers (one GDS handle per worker) to prune chromosomes simultaneously; ~8x speedup on multi-core Linux servers |
 
 ------------------------------------------------------------------------
 

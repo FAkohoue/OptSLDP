@@ -85,7 +85,7 @@
                         <h4 data-toc-skip class="author">Félicien
 Akohoue</h4>
             
-            <h4 data-toc-skip class="date">2026-04-03</h4>
+            <h4 data-toc-skip class="date">2026-04-04</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/FAkohoue/OptSLDP/blob/HEAD/vignettes/OptSLDP-introduction.Rmd" class="external-link"><code>vignettes/OptSLDP-introduction.Rmd</code></a></small>
       <div class="d-none name"><code>OptSLDP-introduction.Rmd</code></div>
@@ -181,10 +181,32 @@ per-SNP <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm
 interpreter overhead</td>
 </tr>
 <tr class="odd">
+<td>C++ screening kernel</td>
+<td>
+<code>screen_chunk_cpp()</code> single-pass OLS per chunk; genotype
+variance computed once and reused across all traits; 2-4x faster than R
+matrix algebra</td>
+</tr>
+<tr class="even">
 <td>Batched LD expansion</td>
 <td>Genotypes extracted once per chromosome; <code>foverlaps()</code>
 O(n log n) joins replace O(n^2) loops; GDS reads reduced from thousands
 to ~11</td>
+</tr>
+<tr class="odd">
+<td>Chromosome-streaming screening</td>
+<td>Step 6 extracts and screens one 50k-SNP chunk at a time in GDS mode;
+peak RAM ~300 MB vs ~4 GB for full extraction</td>
+</tr>
+<tr class="even">
+<td>Chromosome-streaming output</td>
+<td>Step 11 writes final panel chromosome-by-chromosome from GDS;
+<code>final_geno_mat</code> is <code>NULL</code> for GDS runs</td>
+</tr>
+<tr class="odd">
+<td>Parallel background pruning</td>
+<td>Step 9 uses FORK workers (one GDS handle per worker) to prune
+chromosomes simultaneously; ~8x speedup on multi-core Linux servers</td>
 </tr>
 </tbody>
 </table>
@@ -197,7 +219,7 @@ to ~11</td>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install from GitHub (with vignettes)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
@@ -205,11 +227,11 @@ to ~11</td>
 <span><span class="co"># Optional: VCF support (Bioconductor)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
 <span>                       <span class="st">"SummarizedExperiment"</span>, <span class="st">"Biostrings"</span>, <span class="st">"S4Vectors"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Optional: GDS backend for &gt; 2 M SNP panels (Bioconductor)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Load the package:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://FAkohoue.github.io/OptSLDP">OptSLDP</a></span><span class="op">)</span></span></code></pre></div>
