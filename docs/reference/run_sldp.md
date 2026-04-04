@@ -255,14 +255,26 @@ geno_file  <- system.file("extdata", "example_genotypes_numeric.csv",
 pheno_file <- system.file("extdata", "example_phenotype.csv",
                            package = "OptSLDP")
 
-# -- Single trait ------------------------------------------------------------
+# -- Single trait, numeric output (default) ----------------------------------
 res <- run_sldp(
   genotype_file  = geno_file,
   phenotype_file = pheno_file,
   output_file    = tempfile(fileext = ".csv"),
   trait_col      = "Trait1",
   mode           = "A",
-  pval_threshold = 0.05
+  pval_threshold = 0.05,
+  output_format  = "numeric"    # default: values are 0/1/2/NA
+)
+
+# -- Single trait, HapMap output ---------------------------------------------
+res_hmp <- run_sldp(
+  genotype_file  = geno_file,
+  phenotype_file = pheno_file,
+  output_file    = tempfile(fileext = ".hmp.txt"),  # use .hmp.txt extension
+  trait_col      = "Trait1",
+  mode           = "A",
+  pval_threshold = 0.05,
+  output_format  = "hapmap"     # nucleotide calls: AA/AT/TT/NN
 )
 
 # -- Multi-trait: union protection -------------------------------------------
@@ -273,7 +285,8 @@ res <- run_sldp(
   trait_col      = c("Trait1", "Trait2"),
   covar_cols     = c("PC1", "PC2"),
   mode           = "A",
-  pval_threshold = 0.05
+  pval_threshold = 0.05,
+  output_format  = "numeric"
 )
 # Inspect per-trait results
 names(res$screening_stats)          # "Trait1" "Trait2"

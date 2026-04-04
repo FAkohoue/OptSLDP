@@ -1165,12 +1165,15 @@ and an output path; everything else is handled internally.</p>
 </tr>
 <tr class="even">
 <td>6</td>
-<td>Extract post-filter SNPs (GDS only)</td>
+<td>Chromosome-streaming screening: one chromosome extracted, screened
+and freed at a time <em>(GDS)</em>; full matrix screened directly
+<em>(in_memory/chunked)</em>
+</td>
 <td>—</td>
 </tr>
 <tr class="odd">
 <td>7</td>
-<td>Marginal screening + candidate selection</td>
+<td>Candidate selection from pre-computed screening statistics</td>
 <td>
 <code>mode</code>, <code>pval_threshold</code>,
 <code>z_threshold</code>, <code>pve_threshold</code>,
@@ -1199,7 +1202,9 @@ and an output path; everything else is handled internally.</p>
 </tr>
 <tr class="odd">
 <td>11</td>
-<td>Write output file</td>
+<td>Write pruned output file: chromosome-streaming from GDS
+<em>(GDS)</em> or direct write <em>(in_memory/chunked)</em>;
+<code>final_geno_mat</code> is <code>NULL</code> for GDS runs</td>
 <td><code>output_format</code></td>
 </tr>
 <tr class="even">
@@ -1484,20 +1489,19 @@ in the pipeline.</p>
 <tbody>
 <tr class="odd">
 <td><code>in_memory</code></td>
-<td><span class="math inline">\(n \le 200\,000\)</span></td>
+<td>n &lt;= 200,000</td>
 <td>
-<code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> on full matrix in RAM</td>
+<code><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod()</a></code> / C++ BLAS in RAM</td>
 </tr>
 <tr class="even">
 <td><code>chunked</code></td>
-<td><span class="math inline">\(200\,000 &lt; n \le
-2\,000\,000\)</span></td>
+<td>200,000 &lt; n &lt;= 2,000,000</td>
 <td>
-<code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> per chromosome</td>
+<code><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod()</a></code> / C++ per chromosome</td>
 </tr>
 <tr class="odd">
 <td><code>gds</code></td>
-<td><span class="math inline">\(n &gt; 2\,000\,000\)</span></td>
+<td>n &gt; 2,000,000</td>
 <td>
 <code>snpgdsLDMat()</code> from disk (requires SNPRelate)</td>
 </tr>

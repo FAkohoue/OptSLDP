@@ -68,6 +68,13 @@ Rcpp::compileAttributes()
 # 5. Document again to pick up RcppExports.R
 devtools::document()
 
+
+# Step 1: Detach and unload the package completely
+try(detach("package:OptSLDP", unload = TRUE, force = TRUE), silent = TRUE)
+
+# Step 2: Restart R session to release the file lock
+.rs.restartR()
+
 # 6. Install
 devtools::install()
 
@@ -79,17 +86,7 @@ devtools::test()
 devtools::check()
 
 # 9. Build vignettes
-
-unloadNamespace("OptSLDP")
-
-pkgdown::clean_site(force = TRUE)
-pkgdown::build_site()
-
-
-devtools::build()
-
-
-options(pkgdown.internet = FALSE)
+#options(pkgdown.internet = FALSE)
 
 # Build everything except home, then build home separately
 pkgdown::build_reference()
@@ -99,3 +96,13 @@ pkgdown::build_news()
 # Build home with network disabled at the curl level
 httr2_mock <- function(...) stop("no network", call. = FALSE)
 pkgdown::build_home()
+
+#unloadNamespace("OptSLDP")
+
+#pkgdown::clean_site(force = TRUE)
+pkgdown::build_site()
+
+
+# 10. Build package
+
+devtools::build()

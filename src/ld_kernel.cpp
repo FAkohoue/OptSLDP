@@ -203,3 +203,118 @@ LogicalVector greedy_prune_r2_cpp(const NumericMatrix& r2_mat,
   }
   return keep;
 }
+
+
+// ============================================================================
+// Screening kernel: vectorised OLS for all SNPs in a chunk in one C++ pass.
+//
+// screen_chunk_cpp()
+//
+// Computes beta, SE, z, p, PVE for every SNP row in G against a single
+// pre-residualised phenotype vector y. Genotype variance (g_var) can be
+// passed in if already computed (multi-trait reuse); pass an empty vector
+// to have it computed here.
+//
+// @param G        NumericMatrix SNPs x samples (0/1/2, NA allowed).
+//                 NAs are mean-imputed per SNP internally.
+// @param y        NumericVector length n_samples (already residualised).
+// @param g_var_in NumericVector length n_snps, or length-0 to compute here.
+// @return         NumericMatrix n_snps x 6: beta, SE, z, p, PVE, g_var
+//                 (g_var returned so caller can cache it for other traits)
+// ============================================================================
+// [[Rcpp::export]]
+NumericMatrix screen_chunk_cpp(NumericMatrix G,
+                               NumericVector y,
+                               NumericVector g_var_in) {
+
+  int n_snps = G.nrow();
+  int n_samp = G.ncol();
+  bool has_gvar = (g_var_in.size() == n_snps);
+
+  // Output: beta, SE, z, p, PVE, g_var
+  NumericMatrix out(n_snps, 6);
+  colnames(out) = CharacterVector::create("beta","SE","z","p","PVE","g_var");
+
+  // Precompute y statistics once
+  double y_sum = 0.0;
+  for (int j = 0; j < n_samp; ++j) y_sum += y[j];
+  double y_bar = y_sum / n_samp;
+
+  double ss_tot = 0.0;
+  std::vector<double> y_dev(n_samp);
+  for (int j = 0; j < n_samp; ++j) {
+    y_dev[j] = y[j] - y_bar;
+    ss_tot  += y_dev[j] * y_dev[j];
+  }
+
+  for (int i = 0; i < n_snps; ++i) {
+
+    // -- Mean-impute NAs and compute g_bar ----------------------------------
+    double g_sum   = 0.0;
+    int    n_obs   = 0;
+    for (int j = 0; j < n_samp; ++j) {
+      double v = G(i, j);
+      if (!ISNAN(v)) { g_sum += v; ++n_obs; }
+    }
+    if (n_obs < 5) {
+      out(i, 0) = NA_REAL; out(i, 1) = NA_REAL;
+      out(i, 2) = NA_REAL; out(i, 3) = NA_REAL;
+      out(i, 4) = NA_REAL; out(i, 5) = NA_REAL;
+      continue;
+    }
+    double g_bar_i = g_sum / n_obs;
+
+    // Fill imputed row into local buffer
+    std::vector<double> g(n_samp);
+    for (int j = 0; j < n_samp; ++j) {
+      double v = G(i, j);
+      g[j] = ISNAN(v) ? g_bar_i : v;
+    }
+
+    // -- Variance and covariance --------------------------------------------
+    double gvar_i;
+    if (has_gvar) {
+      gvar_i = g_var_in[i];
+    } else {
+      gvar_i = 0.0;
+      for (int j = 0; j < n_samp; ++j) {
+        double d = g[j] - g_bar_i;
+        gvar_i  += d * d;
+      }
+      gvar_i /= (n_samp - 1.0);
+    }
+
+    if (gvar_i <= 0 || !R_FINITE(gvar_i)) {
+      out(i, 0) = NA_REAL; out(i, 1) = NA_REAL;
+      out(i, 2) = NA_REAL; out(i, 3) = NA_REAL;
+      out(i, 4) = NA_REAL; out(i, 5) = gvar_i;
+      continue;
+    }
+
+    double gcov_y = 0.0;
+    for (int j = 0; j < n_samp; ++j)
+      gcov_y += (g[j] - g_bar_i) * y_dev[j];
+    gcov_y /= (n_samp - 1.0);
+
+    // -- OLS statistics -----------------------------------------------------
+    double beta_i  = gcov_y / gvar_i;
+    double ss_reg  = beta_i * beta_i * gvar_i * (n_samp - 1.0);
+    double rss_i   = ss_tot - ss_reg;
+    int    df_res  = n_obs - 2;
+    double sigma2  = rss_i / df_res;
+    double se_i    = std::sqrt(sigma2 / (gvar_i * (n_samp - 1.0)));
+    double z_i     = beta_i / se_i;
+
+    // Two-tailed p from t distribution via R API
+    double p_i     = 2.0 * ::Rf_pt(-std::fabs(z_i), df_res, 1, 0);
+    double pve_i   = std::max(0.0, std::min(1.0, ss_reg / ss_tot));
+
+    out(i, 0) = beta_i;
+    out(i, 1) = se_i;
+    out(i, 2) = z_i;
+    out(i, 3) = p_i;
+    out(i, 4) = pve_i;
+    out(i, 5) = gvar_i;
+  }
+  return out;
+}

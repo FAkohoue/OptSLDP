@@ -13,29 +13,39 @@ OptSLDP improves on that foundation in four concrete ways:
 1.  **Memory-safe chunked reading** — genotype files are read in
     fixed-size row chunks with a pre-allocated output matrix, so peak
     RAM is proportional to one chunk rather than twice the full file.
+
 2.  **Explicit per-chromosome garbage collection** — `gc(FALSE)` is
     called after each chromosome’s LD matrix is released in both the
     pre-pruning and background-pruning loops, preventing heap
     fragmentation across 20-30 chromosome passes.
+
 3.  **Multi-trait union protection** — screening and candidate selection
     run independently for each trait; the union of all per-trait
     candidate sets is expanded and protected, so every SNP important for
     *any* trait is retained in the final panel.
+
 4.  **Covariate-adjusted marginal screening** — phenotypes are
     residualised on shared covariates once before the SNP scan
     (equivalent to including covariates in every marginal regression but
     computed in a single [`lm()`](https://rdrr.io/r/stats/lm.html)
     call), which correctly adjusts effect estimates for population
     structure or other confounders.
+
 5.  **Vectorised OLS screening** — marginal regressions use matrix
     algebra (`tcrossprod` via BLAS DGEMM) instead of per-SNP
     [`lm()`](https://rdrr.io/r/stats/lm.html) calls, giving 50-200x
     speedup for the screening step.
+
 6.  **C++ LD kernel** — pairwise r^2 computation, candidate-subset LD
     matrices, sparse threshold scanning, and greedy pruning all run in
     compiled C++ (RcppArmadillo), eliminating R interpreter overhead
     entirely.
-7.  **Batched chromosome LD expansion** — the important-SNP expansion
+
+7.  **C++ screening kernel** — `screen_chunk_cpp()` computes OLS
+    statistics in a single compiled pass per SNP chunk, reusing genotype
+    variance across traits (2-4x faster than R matrix algebra).
+
+8.  **Batched chromosome LD expansion** — the important-SNP expansion
     loop extracts genotypes once per chromosome using
     [`data.table::foverlaps()`](https://rdrr.io/pkg/data.table/man/foverlaps.html)
     for O(n log n) positional joins, reducing GDS reads from thousands
@@ -265,11 +275,11 @@ SNP loop rather than re-fitting covariates for every SNP.
 
 | Statistic | Formula |
 |----|----|
-| Effect size | \\\hat\beta_i = \frac{\text{Cov}(g_i, y^\*)}{\text{Var}(g_i)}\\ |
-| Standard error | \\\widehat{\text{SE}}(\hat\beta_i) = \sqrt{\frac{\hat\sigma^2}{\sum_j(g\_{ij} - \bar g_i)^2}}\\ where \\\hat\sigma^2 = \frac{\text{RSS}}{n - 2}\\ |
-| z-score | \\z_i = \hat\beta_i \\/\\ \widehat{\text{SE}}(\hat\beta_i)\\ |
-| P-value | \\p_i = 2\Pr\\\left(T\_{n-2} \> \|z_i\|\right)\\ (two-tailed \\t\\-test) |
-| PVE | \\R^2_i\\ from the marginal regression |
+| Effect size | beta = Cov(g, y\*) / Var(g) |
+| Standard error | SE(beta) = sqrt(sigma^2 / sum((g - g_bar)^2)), where sigma^2 = RSS / (n-2) |
+| z-score | z = beta / SE(beta) |
+| P-value | p = 2 \* Pr(T\_{n-2} \> |
+| PVE | R^2 from the marginal regression |
 | AF / MAF | as defined in §1 |
 
 SNPs with fewer than 5 complete observations or zero variance receive
@@ -281,15 +291,15 @@ Three modes control which SNPs enter the protected set:
 
 **Mode A — p-value threshold**
 
-\\\mathcal{C}\_A = \left\\i : p_i \le \tau_p\right\\\\
+\\\mathcal{C}\_A = \\i : p_i \le \tau_p\\\\
 
 Requires `pval_threshold`. Appropriate when a clear significance cutoff
 exists (e.g., Bonferroni or a permutation threshold).
 
 **Mode B — effect-size criteria**
 
-\\\mathcal{C}\_B = \left\\i : \|z_i\| \ge \tau_z \\\text{\[AND/OR\]}\\
-R^2_i \ge \tau\_{\text{pve}}\right\\\\
+\\\mathcal{C}\_B = \\i : \|z_i\| \ge \tau_z \\\text{\[AND/OR\]}\\ R^2_i
+\ge \tau\_{\text{pve}}\\\\
 
 Requires at least one of `z_threshold` or `pve_threshold`. The
 `threshold_logic` argument (`"AND"` or `"OR"`) controls how multiple
@@ -299,9 +309,8 @@ simultaneously.
 
 **Mode C — hybrid**
 
-\\\mathcal{C}\_C = \left\\i : p_i \le \tau_p \\\text{\[AND/OR\]}\\
-\|z_i\| \ge \tau_z \\\text{\[AND/OR\]}\\ R^2_i \ge
-\tau\_{\text{pve}}\right\\\\
+\\\mathcal{C}\_C = \\i : p_i \le \tau_p \\\text{\[AND/OR\]}\\ \|z_i\|
+\ge \tau_z \\\text{\[AND/OR\]}\\ R^2_i \ge \tau\_{\text{pve}}\\\\
 
 Any combination of the three criteria, combined by `threshold_logic`.
 
@@ -313,8 +322,8 @@ set** \\\mathcal{I}\\ in two layers for each candidate \\c\\:
 **Layer 1 — positional window.** Every SNP on the same chromosome within
 \\\pm w\\ bp of \\c\\ is added:
 
-\\\mathcal{W}(c) = \left\\i : \text{chr}(i) = \text{chr}(c),\\
-\|\text{pos}(i) - \text{pos}(c)\| \le w\right\\\\
+\\\mathcal{W}(c) = \\i : \text{chr}(i) = \text{chr}(c),\\
+\|\text{pos}(i) - \text{pos}(c)\| \le w\\\\
 
 where \\w = w\_{\text{kb}} \times 1000\\ bp (default \\w\_{\text{kb}} =
 50\\, so \\w = 50\\000\\ bp on each side).
@@ -324,13 +333,13 @@ where \\w = w\_{\text{kb}} \times 1000\\ bp (default \\w\_{\text{kb}} =
 candidate \\c\\ at or above \\\tau\_{\text{flag}}\\ (default 0.90) are
 also added:
 
-\\\mathcal{L}(c) = \left\\i \in \mathcal{W}(c) : r^2(i, c) \ge
-\tau\_{\text{flag}}\right\\\\
+\\\mathcal{L}(c) = \\i \in \mathcal{W}(c) : r^2(i, c) \ge
+\tau\_{\text{flag}}\\\\
 
 The full protected set is the union over all candidates:
 
-\\\mathcal{I} = \bigcup\_{c \in \mathcal{C}} \left\[\mathcal{W}(c) \cup
-\mathcal{L}(c)\right\]\\
+\\\mathcal{I} = \bigcup\_{c \in \mathcal{C}} \[\mathcal{W}(c) \cup
+\mathcal{L}(c)\]\\
 
 The \\r^2\\ statistic used here is the squared Pearson correlation
 computed from the dosage matrix with pairwise-complete observations:
@@ -366,9 +375,8 @@ The final retained panel is:
 For the GDS strategy the background pruning uses `snpgdsPruneLD()` from
 SNPRelate, which processes the chromosome in streaming blocks without
 loading the full \\r^2\\ matrix. The equivalent threshold passed to
-`snpgdsPruneLD` is \\\|r\| \ge \sqrt{\tau\_{\text{genome}}}\\ because
-that function operates on the correlation coefficient rather than
-\\r^2\\.
+`snpgdsPruneLD` is \|r\| \>= sqrt(r2_genome) because that function
+operates on the correlation coefficient rather than r^2.
 
 ------------------------------------------------------------------------
 
@@ -419,9 +427,9 @@ are computed throughout the pipeline.
 
 | Strategy | Trigger (default) | LD backend | Notes |
 |----|----|----|----|
-| `in_memory` | \\n \le 200\\000\\ | [`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) / C++ BLAS in RAM | Fastest for small panels |
-| `chunked` | \\200\\000 \< n \le 2\\000\\000\\ | [`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) / C++ per chromosome | Bounds RAM to one chromosome |
-| `gds` | \\n \> 2\\000\\000\\ | `snpgdsLDMat()` from disk | Requires SNPRelate |
+| `in_memory` | n \<= 200,000 | [`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) / C++ BLAS in RAM | Fastest for small panels |
+| `chunked` | 200,000 \< n \<= 2,000,000 | [`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) / C++ per chromosome | Bounds RAM to one chromosome |
+| `gds` | n \> 2,000,000 | `snpgdsLDMat()` from disk | Requires SNPRelate |
 
 Override with `scale_strategy = "in_memory"` / `"chunked"` / `"gds"`.
 Adjust the automatic thresholds site-wide:
@@ -467,12 +475,12 @@ in order:
 | 3 | Select scale strategy, write GDS if needed | `scale_strategy`, `gds_dir`, `n_cores` |
 | 4 | MAF filter | `maf_threshold` |
 | 5 | High-LD pre-pruning *(optional)* | `preprune_large`, `preprune_r2` |
-| 6 | Extract post-filter SNPs from GDS *(GDS only)* | — |
-| 7 | Marginal screening + candidate selection | `mode`, `pval_threshold`, `z_threshold`, `pve_threshold`, `threshold_logic` |
+| 6 | Chromosome-streaming screening: extract one chromosome at a time, screen it, accumulate statistics, free RAM before next chromosome *(GDS)*; or screen full in-memory matrix *(in_memory/chunked)* | — |
+| 7 | Candidate selection from pre-computed statistics | `mode`, `pval_threshold`, `z_threshold`, `pve_threshold`, `threshold_logic` |
 | 8 | Important SNP expansion | `window_kb`, `include_ld_neighbors`, `r2_flag` |
 | 9 | Background LD pruning | `r2_genome`, `slide_max_bp` |
 | 10 | Merge important + retained background | — |
-| 11 | Write pruned output file | `output_format` |
+| 11 | Write pruned output file: chromosome-streaming from GDS *(GDS)* or direct write *(in_memory/chunked)*; `final_geno_mat` is `NULL` for GDS runs | `output_format` |
 | 12 | Write pruning statistics *(optional)* | `stats_output_file`, `summary_output_file` |
 
 **Step 5 — high-LD pre-pruning.** Before screening, near-duplicate SNPs

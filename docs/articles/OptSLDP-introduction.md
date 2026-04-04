@@ -915,12 +915,12 @@ is handled internally.
 | 3 | Select scale strategy | `scale_strategy`, `gds_dir`, `n_cores` |
 | 4 | MAF filter | `maf_threshold` |
 | 5 (optional) | High-LD pre-pruning | `preprune_large`, `preprune_r2` |
-| 6 | Extract post-filter SNPs (GDS only) | — |
-| 7 | Marginal screening + candidate selection | `mode`, `pval_threshold`, `z_threshold`, `pve_threshold`, `threshold_logic` |
+| 6 | Chromosome-streaming screening: one chromosome extracted, screened and freed at a time *(GDS)*; full matrix screened directly *(in_memory/chunked)* | — |
+| 7 | Candidate selection from pre-computed screening statistics | `mode`, `pval_threshold`, `z_threshold`, `pve_threshold`, `threshold_logic` |
 | 8 | Important SNP expansion | `window_kb`, `include_ld_neighbors`, `r2_flag` |
 | 9 | Background LD pruning | `r2_genome`, `slide_max_bp` |
 | 10 | Merge important + retained background | — |
-| 11 | Write output file | `output_format` |
+| 11 | Write pruned output file: chromosome-streaming from GDS *(GDS)* or direct write *(in_memory/chunked)*; `final_geno_mat` is `NULL` for GDS runs | `output_format` |
 | 12 | Write pruning report (optional) | `stats_output_file`, `summary_output_file` |
 
 ### Single-trait run (Mode A)
@@ -1182,9 +1182,9 @@ pipeline.
 
 | Strategy | Default trigger | LD backend |
 |----|----|----|
-| `in_memory` | \\n \le 200\\000\\ | [`cor()`](https://rdrr.io/r/stats/cor.html) on full matrix in RAM |
-| `chunked` | \\200\\000 \< n \le 2\\000\\000\\ | [`cor()`](https://rdrr.io/r/stats/cor.html) per chromosome |
-| `gds` | \\n \> 2\\000\\000\\ | `snpgdsLDMat()` from disk (requires SNPRelate) |
+| `in_memory` | n \<= 200,000 | [`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) / C++ BLAS in RAM |
+| `chunked` | 200,000 \< n \<= 2,000,000 | [`tcrossprod()`](https://rdrr.io/r/base/crossprod.html) / C++ per chromosome |
+| `gds` | n \> 2,000,000 | `snpgdsLDMat()` from disk (requires SNPRelate) |
 
 Adjust the thresholds for your hardware:
 

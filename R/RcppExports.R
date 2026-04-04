@@ -13,3 +13,7 @@ greedy_prune_r2_cpp <- function(r2_mat, threshold) {
     .Call(`_OptSLDP_greedy_prune_r2_cpp`, r2_mat, threshold)
 }
 
+screen_chunk_cpp <- function(G, y, g_var_in) {
+    .Call(`_OptSLDP_screen_chunk_cpp`, G, y, g_var_in)
+}
+

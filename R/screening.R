@@ -88,12 +88,17 @@ compute_screening_stats <- function(geno_mat, y, covar = NULL,
 #'
 #' @keywords internal
 #' @noRd
-.screen_single_trait <- function(geno_mat, y, covar = NULL, verbose = TRUE) {
+.screen_single_trait <- function(geno_mat, y, covar = NULL,
+                                 g_var_cache = NULL, verbose = TRUE) {
+  # g_var_cache: optional precomputed genotype variance (n_snps vector).
+  #   Pass this when screening multiple traits on the same chunk to avoid
+  #   recomputing variance -- genotype variance is phenotype-independent.
+
   if (length(y) != ncol(geno_mat))
     stop("Length of y must equal ncol(geno_mat).", call. = FALSE)
   y <- as.numeric(y)
 
-  # Residualise on covariates once, before the SNP loop
+  # Residualise on covariates once before the SNP scan
   if (!is.null(covar)) {
     covar <- as.data.frame(covar)
     if (nrow(covar) != length(y))
@@ -101,65 +106,65 @@ compute_screening_stats <- function(geno_mat, y, covar = NULL,
     y <- stats::residuals(stats::lm(y ~ ., data = covar))
   }
 
-  maf_dt <- compute_maf(geno_mat)
+  maf_dt  <- compute_maf(geno_mat)
+  snp_ids <- rownames(geno_mat)
+  .report_progress("Computing screening statistics for ", nrow(geno_mat),
+                   " SNPs", verbose = verbose)
+
+  # -- C++ path: single-pass per-SNP OLS via screen_chunk_cpp() --------------
+  # Uses .screen_chunk() wrapper from utils_cpp.R which handles namespace
+  # lookup correctly under both devtools::load_all() and installed builds.
+  res_mat <- .screen_chunk(geno_mat, y, g_var_cache)
+  if (!is.null(res_mat)) {
+    return(data.table::data.table(
+      SNP     = snp_ids,
+      beta    = res_mat[, 1L],
+      SE      = res_mat[, 2L],
+      z_score = res_mat[, 3L],
+      P.value = res_mat[, 4L],
+      PVE     = res_mat[, 5L],
+      AF      = maf_dt$AF,
+      MAF     = maf_dt$MAF
+    ))
+  }
+
+  # -- Pure-R fallback: vectorised matrix algebra ----------------------------
   n_snps <- nrow(geno_mat)
   n_samp <- ncol(geno_mat)
-  snp_ids <- rownames(geno_mat)
 
-  .report_progress("Computing screening statistics for ", n_snps, " SNPs",
-                   verbose = verbose)
-
-  # -- Vectorised OLS via matrix algebra --------------------------------------
-  # For each SNP i: beta_i = cov(g_i, y) / var(g_i)
-  # Computed simultaneously for all SNPs using matrix ops.
-  # Missing values handled by mean-imputing each SNP before algebra,
-  # then flagging SNPs with too much missingness as NA.
-
-  # Count non-missing per SNP
-  not_na <- !is.na(geno_mat)              # SNPs x samples logical
-  n_obs  <- rowSums(not_na)              # number of complete obs per SNP
-
-  # Mean-impute missing values for vectorised computation
-  # (results for low-obs or zero-var SNPs will be overwritten with NA below)
+  not_na    <- !is.na(geno_mat)
+  n_obs     <- rowSums(not_na)
   row_means <- rowMeans(geno_mat, na.rm = TRUE)
   g_imp     <- geno_mat
   na_idx    <- which(is.na(geno_mat), arr.ind = TRUE)
   if (nrow(na_idx) > 0L)
     g_imp[na_idx] <- row_means[na_idx[, 1L]]
 
-  # y mean and deviations (y has no NA after residualisation)
   y_bar   <- mean(y)
-  y_dev   <- y - y_bar                   # length n_samp
+  y_dev   <- y - y_bar
+  g_bar   <- row_means
+  g_dev   <- sweep(g_imp, 1L, g_bar, `-`)
 
-  # Per-SNP: g_bar, g_dev, var(g), cov(g,y)
-  g_bar   <- row_means                   # n_snps
-  # g_dev matrix: SNPs x samples (sweep row means)
-  g_dev   <- sweep(g_imp, 1L, g_bar, `-`)   # SNPs x samples
-  g_var   <- rowSums(g_dev^2) / (n_samp - 1L)          # n_snps
-  g_cov_y <- (g_dev %*% y_dev)[, 1L] / (n_samp - 1L)  # n_snps
+  # Reuse cached variance if available; otherwise compute once
+  g_var   <- if (!is.null(g_var_cache)) g_var_cache else
+    rowSums(g_dev^2) / (n_samp - 1L)
 
-  beta  <- g_cov_y / g_var              # n_snps
-  # RSS from beta directly (no need to materialise residual matrix)
-  # RSS_i = sum((y - ybar)^2) - beta_i^2 * sum((g_i - gbar_i)^2)
+  g_cov_y <- (g_dev %*% y_dev)[, 1L] / (n_samp - 1L)
+
+  beta    <- g_cov_y / g_var
   ss_tot  <- sum(y_dev^2)
-  ss_reg  <- beta^2 * g_var * (n_samp - 1L)  # = beta * g_cov_y * (n-1)
+  ss_reg  <- beta^2 * g_var * (n_samp - 1L)
   rss     <- ss_tot - ss_reg
   df_res  <- n_obs - 2L
   sigma2  <- rss / df_res
   se      <- sqrt(sigma2 / (g_var * (n_samp - 1L)))
-
   z_score <- beta / se
   p_value <- 2 * stats::pt(-abs(z_score), df = df_res)
-  pve     <- ss_reg / ss_tot
-  pve     <- pmax(0, pmin(1, pve))
+  pve     <- pmax(0, pmin(1, ss_reg / ss_tot))
 
-  # Flag invalid SNPs (too few obs or zero variance)
   invalid <- n_obs < 5L | g_var <= 0 | !is.finite(g_var)
-  beta[invalid]    <- NA_real_
-  se[invalid]      <- NA_real_
-  z_score[invalid] <- NA_real_
-  p_value[invalid] <- NA_real_
-  pve[invalid]     <- NA_real_
+  beta[invalid] <- se[invalid] <- z_score[invalid] <-
+    p_value[invalid] <- pve[invalid] <- NA_real_
 
   data.table::data.table(
     SNP     = snp_ids,

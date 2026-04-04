@@ -149,14 +149,26 @@
 #' pheno_file <- system.file("extdata", "example_phenotype.csv",
 #'                            package = "OptSLDP")
 #'
-#' # -- Single trait ------------------------------------------------------------
+#' # -- Single trait, numeric output (default) ----------------------------------
 #' res <- run_sldp(
 #'   genotype_file  = geno_file,
 #'   phenotype_file = pheno_file,
 #'   output_file    = tempfile(fileext = ".csv"),
 #'   trait_col      = "Trait1",
 #'   mode           = "A",
-#'   pval_threshold = 0.05
+#'   pval_threshold = 0.05,
+#'   output_format  = "numeric"    # default: values are 0/1/2/NA
+#' )
+#'
+#' # -- Single trait, HapMap output ---------------------------------------------
+#' res_hmp <- run_sldp(
+#'   genotype_file  = geno_file,
+#'   phenotype_file = pheno_file,
+#'   output_file    = tempfile(fileext = ".hmp.txt"),  # use .hmp.txt extension
+#'   trait_col      = "Trait1",
+#'   mode           = "A",
+#'   pval_threshold = 0.05,
+#'   output_format  = "hapmap"     # nucleotide calls: AA/AT/TT/NN
 #' )
 #'
 #' # -- Multi-trait: union protection -------------------------------------------
@@ -167,7 +179,8 @@
 #'   trait_col      = c("Trait1", "Trait2"),
 #'   covar_cols     = c("PC1", "PC2"),
 #'   mode           = "A",
-#'   pval_threshold = 0.05
+#'   pval_threshold = 0.05,
+#'   output_format  = "numeric"
 #' )
 #' # Inspect per-trait results
 #' names(res$screening_stats)          # "Trait1" "Trait2"
@@ -324,43 +337,148 @@ run_sldp <- function(genotype_file,
   }
 
   # -- Step 6: Screening statistics -------------------------------------------
-  # For GDS runs the post-filter subset is extracted into RAM here.
-  # It is far smaller than the original 10M+ panel.
+  # GDS strategy: stream one chromosome at a time, screen it, accumulate
+  # only the statistics (not the genotypes). Peak RAM = one chromosome's
+  # genotype matrix (~200-300 MB for 2M SNPs x 204 samples) instead of
+  # the full 2.65M x 204 matrix (~4 GB).
+  # In-memory/chunked: geno_mat is already in RAM, screen directly.
   .report_progress("[6] Computing screening statistics ...", verbose = verbose)
 
-  geno_screen <- if (identical(strategy, "gds")) {
-    .report_progress("    Extracting ", nrow(snp_info),
-                     " post-filter SNPs from GDS ...", verbose = verbose)
-    .extract_geno_gds(ctx$genofile,
-                      snp_ids    = snp_info$SNP,
-                      sample_ids = g$sample_ids)
+  if (identical(strategy, "gds")) {
+    .report_progress("    Chunked chromosome screening (",
+                     length(unique(snp_info$CHR)), " chromosomes, ",
+                     "chunk_size=50000) ...", verbose = verbose)
+
+    chr_levels <- unique(snp_info$CHR)
+    chunk_size <- 50000L   # SNPs per chunk -- balances cache locality vs GDS overhead
+
+    # Residualise phenotype on covariates ONCE before all chromosome/chunk loops
+    y_list <- if (!is.null(phenotype) && is.matrix(phenotype)) {
+      lapply(seq_len(ncol(phenotype)), function(j) {
+        yj <- as.numeric(phenotype[, j])
+        if (!is.null(covariates))
+          yj <- stats::residuals(stats::lm(yj ~ .,
+                                           data = as.data.frame(covariates)))
+        yj
+      })
+    } else {
+      y_single <- as.numeric(phenotype)
+      if (!is.null(covariates))
+        y_single <- stats::residuals(stats::lm(y_single ~ .,
+                                               data = as.data.frame(covariates)))
+      list(y_single)
+    }
+    n_traits_screen <- length(y_list)
+
+    all_stats <- vector("list", n_traits_screen)
+    for (j in seq_len(n_traits_screen)) all_stats[[j]] <- vector("list", 0L)
+
+    for (chr_i in chr_levels) {
+      chr_snp_ids <- snp_info$SNP[snp_info$CHR == chr_i]
+      n_chr       <- length(chr_snp_ids)
+
+      # Split chromosome into chunks for better cache locality
+      chunk_starts <- seq(1L, n_chr, by = chunk_size)
+
+      for (cs in chunk_starts) {
+        ce        <- min(cs + chunk_size - 1L, n_chr)
+        chunk_ids <- chr_snp_ids[cs:ce]
+
+        geno_chunk <- tryCatch(
+          .extract_geno_gds(ctx$genofile,
+                            snp_ids    = chunk_ids,
+                            sample_ids = g$sample_ids),
+          error = function(e) NULL
+        )
+        if (is.null(geno_chunk) || nrow(geno_chunk) == 0L) next
+
+        # Compute genotype variance ONCE per chunk -- reused across all traits
+        # Genotype variance is phenotype-independent; no need to recompute per trait
+        g_var_cache <- {
+          row_means_c <- rowMeans(geno_chunk, na.rm = TRUE)
+          g_imp_c     <- geno_chunk
+          na_idx_c    <- which(is.na(geno_chunk), arr.ind = TRUE)
+          if (nrow(na_idx_c) > 0L)
+            g_imp_c[na_idx_c] <- row_means_c[na_idx_c[, 1L]]
+          g_dev_c <- sweep(g_imp_c, 1L, row_means_c, `-`)
+          rowSums(g_dev_c^2) / (ncol(geno_chunk) - 1L)
+        }
+
+        # Screen chunk for each trait, reusing g_var_cache
+        for (j in seq_len(n_traits_screen)) {
+          chunk_stat <- .screen_single_trait(
+            geno_chunk,
+            y           = y_list[[j]],
+            covar       = NULL,          # already residualised above
+            g_var_cache = g_var_cache,   # avoid recomputing variance per trait
+            verbose     = FALSE
+          )
+          all_stats[[j]] <- c(all_stats[[j]], list(chunk_stat))
+        }
+
+        rm(geno_chunk, g_var_cache); gc(FALSE)
+      }
+    }
+
+    # Combine chunk statistics into per-trait data.tables
+    geno_screen <- NULL
+    if (n_traits_screen == 1L) {
+      screen_stats_pre <- data.table::rbindlist(all_stats[[1L]])
+    } else {
+      trait_names_screen <- if (is.matrix(phenotype)) colnames(phenotype) else trait_col
+      screen_stats_pre <- stats::setNames(
+        lapply(all_stats, data.table::rbindlist),
+        trait_names_screen
+      )
+    }
+    rm(all_stats); gc(FALSE)
+
   } else {
-    geno_mat
+    geno_screen      <- geno_mat
+    screen_stats_pre <- NULL
   }
 
   # -- Step 7: Candidate selection (single-trait or multi-trait) --------------
   if (multi_trait) {
     # -- Multi-trait branch ----------------------------------------------------
-    # Screening runs separately per trait; candidates are unioned.
     .report_progress("[7] Multi-trait screening (",
                      length(trait_col), " traits) ...", verbose = verbose)
 
-    screen_res <- .screen_all_traits(
-      geno_mat        = geno_screen,
-      pheno_matrix    = phenotype,
-      covar           = covariates,
-      mode            = mode,
-      pval_threshold  = pval_threshold,
-      z_threshold     = z_threshold,
-      pve_threshold   = pve_threshold,
-      threshold_logic = threshold_logic,
-      n_cores         = min(length(trait_col), n_cores),
-      verbose         = verbose
-    )
-
-    screening_stats          <- screen_res$screening_stats
-    candidate_snps_per_trait <- screen_res$candidate_snps_per_trait
-    candidate_snps           <- screen_res$candidate_snps_union
+    if (!is.null(screen_stats_pre)) {
+      # GDS path: stats already computed per chromosome in step 6
+      .report_progress("  Using pre-computed chromosome screening stats ...",
+                       verbose = verbose)
+      screening_stats <- screen_stats_pre
+      candidate_snps_per_trait <- lapply(trait_col, function(tn) {
+        select_candidate_snps(
+          screening_stats[[tn]],
+          mode            = mode,
+          pval_threshold  = pval_threshold,
+          z_threshold     = z_threshold,
+          pve_threshold   = pve_threshold,
+          logic           = threshold_logic
+        )
+      })
+      names(candidate_snps_per_trait) <- trait_col
+      candidate_snps <- unique(unlist(candidate_snps_per_trait))
+    } else {
+      # In-memory/chunked path: screen now
+      screen_res <- .screen_all_traits(
+        geno_mat        = geno_screen,
+        pheno_matrix    = phenotype,
+        covar           = covariates,
+        mode            = mode,
+        pval_threshold  = pval_threshold,
+        z_threshold     = z_threshold,
+        pve_threshold   = pve_threshold,
+        threshold_logic = threshold_logic,
+        n_cores         = min(length(trait_col), n_cores),
+        verbose         = verbose
+      )
+      screening_stats          <- screen_res$screening_stats
+      candidate_snps_per_trait <- screen_res$candidate_snps_per_trait
+      candidate_snps           <- screen_res$candidate_snps_union
+    }
 
     # Log per-trait counts and union total
     for (tn in trait_col) {
@@ -384,9 +502,15 @@ run_sldp <- function(genotype_file,
     .report_progress("[7] Computing screening statistics + selecting candidates",
                      " (mode=", mode, ") ...", verbose = verbose)
 
-    screening_stats <- .screen_single_trait(
-      geno_screen, y = phenotype, covar = covariates, verbose = verbose
-    )
+    if (!is.null(screen_stats_pre)) {
+      # GDS path: stats pre-computed per chromosome in step 6
+      screening_stats <- screen_stats_pre
+    } else {
+      # In-memory/chunked path: screen now
+      screening_stats <- .screen_single_trait(
+        geno_screen, y = phenotype, covar = covariates, verbose = verbose
+      )
+    }
     candidate_snps <- select_candidate_snps(
       screening_stats,
       mode            = mode,
@@ -462,20 +586,79 @@ run_sldp <- function(genotype_file,
   data.table::setDT(final_snp_info)
   data.table::setorder(final_snp_info, CHR, POS)
 
-  final_geno_mat <- if (identical(strategy, "gds")) {
-    .extract_geno_gds(ctx$genofile,
-                      snp_ids    = final_snp_info$SNP,
-                      sample_ids = g$sample_ids)
-  } else {
-    geno_mat[final_snp_info$SNP, , drop = FALSE]
-  }
-
   # -- Step 11: Write output ---------------------------------------------------
+  # GDS strategy: write directly from GDS chromosome by chromosome -- never
+  # load the full final panel into RAM. final_geno_mat is returned as NULL.
+  # In-memory/chunked: slice the already-loaded matrix (cheap).
   .report_progress("[11] Writing output to: ", output_file, verbose = verbose)
-  if (identical(output_format, "numeric"))
-    write_numeric_genotype(final_snp_info, final_geno_mat, output_file)
-  else
-    write_hapmap_genotype(final_snp_info, final_geno_mat, output_file)
+
+  if (identical(strategy, "gds")) {
+    # Stream-write by chromosome: extract one chromosome at a time, write
+    # its rows to the output file, free RAM before the next chromosome.
+    chr_levels <- unique(final_snp_info$CHR)
+    first_chr  <- TRUE
+    for (chr_i in chr_levels) {
+      chr_snp_ids <- final_snp_info$SNP[final_snp_info$CHR == chr_i]
+      chr_si      <- final_snp_info[final_snp_info$CHR == chr_i, ]
+      geno_chr    <- tryCatch(
+        .extract_geno_gds(ctx$genofile,
+                          snp_ids    = chr_snp_ids,
+                          sample_ids = g$sample_ids),
+        error = function(e) NULL
+      )
+      if (is.null(geno_chr)) next
+
+      if (identical(output_format, "numeric")) {
+        # For first chromosome write header + rows; subsequent append rows only
+        chr_df <- data.frame(
+          SNP = chr_si$SNP, CHR = chr_si$CHR, POS = chr_si$POS,
+          REF = chr_si$REF, ALT = chr_si$ALT,
+          as.data.frame(geno_chr, check.names = FALSE),
+          check.names = FALSE, stringsAsFactors = FALSE
+        )
+        data.table::fwrite(chr_df, file = output_file,
+                           append = !first_chr, col.names = first_chr,
+                           sep = ",", quote = FALSE)
+      } else {
+        # HapMap: convert dosage to nucleotide calls then append
+        geno_hmp <- matrix(NA_character_, nrow = nrow(geno_chr),
+                           ncol = ncol(geno_chr),
+                           dimnames = dimnames(geno_chr))
+        for (i in seq_len(nrow(geno_chr))) {
+          r  <- chr_si$REF[i]; a <- chr_si$ALT[i]; gi <- geno_chr[i, ]
+          geno_hmp[i, gi == 0]   <- paste0(r, r)
+          geno_hmp[i, gi == 1]   <- paste0(r, a)
+          geno_hmp[i, gi == 2]   <- paste0(a, a)
+          geno_hmp[i, is.na(gi)] <- "NN"
+        }
+        hmp_df <- data.frame(
+          "rs#"        = chr_si$SNP,
+          alleles      = paste0(chr_si$REF, "/", chr_si$ALT),
+          chrom        = chr_si$CHR,   pos = chr_si$POS,
+          strand       = "+",          "assembly#" = NA_character_,
+          center       = NA_character_, protLSID   = NA_character_,
+          assayLSID    = NA_character_, panelLSID  = NA_character_,
+          QCcode       = NA_character_,
+          as.data.frame(geno_hmp, check.names = FALSE),
+          check.names = FALSE, stringsAsFactors = FALSE
+        )
+        data.table::fwrite(hmp_df, file = output_file,
+                           append = !first_chr, col.names = first_chr,
+                           sep = "	", quote = FALSE, na = "NN")
+      }
+      first_chr <- FALSE
+      rm(geno_chr); gc(FALSE)
+    }
+    final_geno_mat <- NULL   # never loaded into RAM; use extract_final_geno()
+
+  } else {
+    # In-memory / chunked: matrix already in RAM, slice and write at once
+    final_geno_mat <- geno_mat[final_snp_info$SNP, , drop = FALSE]
+    if (identical(output_format, "numeric"))
+      write_numeric_genotype(final_snp_info, final_geno_mat, output_file)
+    else
+      write_hapmap_genotype(final_snp_info, final_geno_mat, output_file)
+  }
 
   # -- Step 12: Pruning report -------------------------------------------------
   if (!is.null(stats_output_file) || !is.null(summary_output_file)) {

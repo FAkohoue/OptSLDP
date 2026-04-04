@@ -48,11 +48,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// screen_chunk_cpp
+NumericMatrix screen_chunk_cpp(NumericMatrix G, NumericVector y, NumericVector g_var_in);
+RcppExport SEXP _OptSLDP_screen_chunk_cpp(SEXP GSEXP, SEXP ySEXP, SEXP g_var_inSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type G(GSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type g_var_in(g_var_inSEXP);
+    rcpp_result_gen = Rcpp::wrap(screen_chunk_cpp(G, y, g_var_in));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_OptSLDP_r2_subset_cpp", (DL_FUNC) &_OptSLDP_r2_subset_cpp, 2},
     {"_OptSLDP_above_threshold_subset_cpp", (DL_FUNC) &_OptSLDP_above_threshold_subset_cpp, 3},
     {"_OptSLDP_greedy_prune_r2_cpp", (DL_FUNC) &_OptSLDP_greedy_prune_r2_cpp, 2},
+    {"_OptSLDP_screen_chunk_cpp", (DL_FUNC) &_OptSLDP_screen_chunk_cpp, 3},
     {NULL, NULL, 0}
 };
 
