@@ -450,15 +450,23 @@ computed automatically from a LD-pruned SNP subset before screening begins.
 
 **Reported statistics per SNP:**
 
-| Column | Formula |
-|--------|---------|
-| `beta` | $\hat\beta_i = \text{Cov}(g_i, y^*) / \text{Var}(g_i)$ |
-| `SE` | $\widehat{\text{SE}}(\hat\beta_i) = \sqrt{\hat\sigma^2 / \sum_j(g_{ij} - \bar g_i)^2}$, where $\hat\sigma^2 = \text{RSS}/(n-2)$ |
-| `z_score` | $z_i = \hat\beta_i / \widehat{\text{SE}}(\hat\beta_i)$ |
-| `P.value` | $p_i = 2\Pr(T_{n-2} > |z_i|)$ (two-tailed $t$-test) |
-| `PVE` | $R^2_i$ from the marginal regression |
-| `AF` | ALT allele frequency $= \bar g_i / 2$ |
-| `MAF` | $\min(\text{AF}_i,\, 1 - \text{AF}_i)$ |
+**`beta`** — Effect size:
+$$\hat{\beta}_i = \frac{\text{Cov}(g_i, y^*)}{\text{Var}(g_i)}$$
+
+**`SE`** — Standard error:
+$$\widehat{\text{SE}}(\hat{\beta}_i) = \sqrt{\frac{\hat{\sigma}^2}{\sum_j(g_{ij}-\bar{g}_i)^2}}, \quad \hat{\sigma}^2 = \frac{\text{RSS}}{n-2}$$
+
+**`z_score`** — z-score:
+$$z_i = \frac{\hat{\beta}_i}{\widehat{\text{SE}}(\hat{\beta}_i)}$$
+
+**`P.value`** — Two-tailed $t$-test:
+$$p_i = 2\,\Pr\!\left(T_{n-2} > |z_i|\right)$$
+
+**`PVE`** — $R^2_i$ from the marginal regression.
+
+**`AF`** — ALT allele frequency $= \bar{g}_i / 2$.
+
+**`MAF`** — $\min(\text{AF}_i,\;1-\text{AF}_i)$.
 
 SNPs with fewer than 5 complete observations or zero variance receive `NA`
 for all statistical columns.

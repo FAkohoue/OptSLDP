@@ -332,14 +332,27 @@ populations, 5 for panels with clear subgroup separation.
 
 **Reported statistics per SNP:**
 
-| Statistic | Formula |
-|----|----|
-| Effect size | beta = Cov(g, y\*) / Var(g) |
-| Standard error | SE(beta) = sqrt(sigma^2 / sum((g - g_bar)^2)), where sigma^2 = RSS / (n-2) |
-| z-score | z = beta / SE(beta) |
-| P-value | p = 2 \* Pr(T\_{n-2} \> |
-| PVE | R^2 from the marginal regression |
-| AF / MAF | as defined in §1 |
+**Effect size**
+
+\\\hat{\beta}\_i = \frac{\text{Cov}(g_i, y^\*)}{\text{Var}(g_i)}\\
+
+**Standard error**
+
+\\\widehat{\text{SE}}(\hat{\beta}\_i) =
+\sqrt{\frac{\hat{\sigma}^2}{\sum_j(g\_{ij}-\bar{g}\_i)^2}}, \quad
+\hat{\sigma}^2 = \frac{\text{RSS}}{n-2}\\
+
+**z-score**
+
+\\z_i = \frac{\hat{\beta}\_i}{\widehat{\text{SE}}(\hat{\beta}\_i)}\\
+
+**P-value** (two-tailed \\t\\-test)
+
+\\p_i = 2\\\Pr\\\left(T\_{n-2} \> \|z_i\|\right)\\
+
+**PVE** — \\R^2_i\\ from the marginal regression.
+
+**AF / MAF** — as defined in §1.
 
 SNPs with fewer than 5 complete observations or zero variance receive
 `NA` for all statistical columns.

@@ -551,42 +551,16 @@
 <p>where <span class="math inline">\(M_{X_c}\)</span> is the annihilator matrix and <span class="math inline">\(X_c\)</span> contains the PC scores. This is equivalent to fitting <span class="math inline">\(y \sim \text{PC1} + \text{PC2} + \cdots + g_i\)</span> for every SNP but residualisation is performed once before the SNP loop, giving an <span class="math inline">\(O(n_c)\)</span> saving over re-fitting covariates <span class="math inline">\(p\)</span> times.</p>
 <p>When <code>n_pcs &gt; 0</code> and <code>covar_cols = NULL</code>, PCs are computed automatically from a LD-pruned SNP subset via <code>snpgdsPCA()</code>. The user only specifies how many PCs to include. Typical values: 3 for mildly structured populations, 5 for panels with clear subgroup separation.</p>
 <p><strong>Reported statistics per SNP:</strong></p>
-<table class="table">
-<colgroup>
-<col width="55%">
-<col width="45%">
-</colgroup>
-<thead><tr>
-<th>Statistic</th>
-<th>Formula</th>
-</tr></thead>
-<tbody>
-<tr>
-<td>Effect size</td>
-<td>beta = Cov(g, y*) / Var(g)</td>
-</tr>
-<tr>
-<td>Standard error</td>
-<td>SE(beta) = sqrt(sigma^2 / sum((g - g_bar)^2)), where sigma^2 = RSS / (n-2)</td>
-</tr>
-<tr>
-<td>z-score</td>
-<td>z = beta / SE(beta)</td>
-</tr>
-<tr>
-<td>P-value</td>
-<td>p = 2 * Pr(T_{n-2} &gt;</td>
-</tr>
-<tr>
-<td>PVE</td>
-<td>R^2 from the marginal regression</td>
-</tr>
-<tr>
-<td>AF / MAF</td>
-<td>as defined in §1</td>
-</tr>
-</tbody>
-</table>
+<p><strong>Effect size</strong></p>
+<p><span class="math display">\[\hat{\beta}_i = \frac{\text{Cov}(g_i, y^*)}{\text{Var}(g_i)}\]</span></p>
+<p><strong>Standard error</strong></p>
+<p><span class="math display">\[\widehat{\text{SE}}(\hat{\beta}_i) = \sqrt{\frac{\hat{\sigma}^2}{\sum_j(g_{ij}-\bar{g}_i)^2}}, \quad \hat{\sigma}^2 = \frac{\text{RSS}}{n-2}\]</span></p>
+<p><strong>z-score</strong></p>
+<p><span class="math display">\[z_i = \frac{\hat{\beta}_i}{\widehat{\text{SE}}(\hat{\beta}_i)}\]</span></p>
+<p><strong>P-value</strong> (two-tailed <span class="math inline">\(t\)</span>-test)</p>
+<p><span class="math display">\[p_i = 2\,\Pr\!\left(T_{n-2} &gt; |z_i|\right)\]</span></p>
+<p><strong>PVE</strong> — <span class="math inline">\(R^2_i\)</span> from the marginal regression.</p>
+<p><strong>AF / MAF</strong> — as defined in §1.</p>
 <p>SNPs with fewer than 5 complete observations or zero variance receive <code>NA</code> for all statistical columns.</p>
 </div>
 <div class="section level3">

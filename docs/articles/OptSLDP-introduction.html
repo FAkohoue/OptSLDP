@@ -880,58 +880,18 @@ over <span class="math inline">\(O(n_c \cdot p)\)</span>. When
 computed automatically from a LD-pruned SNP subset before screening
 begins.</p>
 <p><strong>Reported statistics per SNP:</strong></p>
-<table class="table">
-<colgroup>
-<col width="47%">
-<col width="52%">
-</colgroup>
-<thead><tr class="header">
-<th>Column</th>
-<th>Formula</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td><code>beta</code></td>
-<td><span class="math inline">\(\hat\beta_i = \text{Cov}(g_i, y^*) /
-\text{Var}(g_i)\)</span></td>
-</tr>
-<tr class="even">
-<td><code>SE</code></td>
-<td>
-<span class="math inline">\(\widehat{\text{SE}}(\hat\beta_i) =
-\sqrt{\hat\sigma^2 / \sum_j(g_{ij} - \bar g_i)^2}\)</span>, where <span class="math inline">\(\hat\sigma^2 = \text{RSS}/(n-2)\)</span>
-</td>
-</tr>
-<tr class="odd">
-<td><code>z_score</code></td>
-<td><span class="math inline">\(z_i = \hat\beta_i /
-\widehat{\text{SE}}(\hat\beta_i)\)</span></td>
-</tr>
-<tr class="even">
-<td><code>P.value</code></td>
-<td>
-<span class="math inline">\(p_i = 2\Pr(T_{n-2} &gt; |z_i|)\)</span>
-(two-tailed <span class="math inline">\(t\)</span>-test)</td>
-</tr>
-<tr class="odd">
-<td><code>PVE</code></td>
-<td>
-<span class="math inline">\(R^2_i\)</span> from the marginal
-regression</td>
-</tr>
-<tr class="even">
-<td><code>AF</code></td>
-<td>ALT allele frequency <span class="math inline">\(= \bar g_i /
-2\)</span>
-</td>
-</tr>
-<tr class="odd">
-<td><code>MAF</code></td>
-<td><span class="math inline">\(\min(\text{AF}_i,\, 1 -
-\text{AF}_i)\)</span></td>
-</tr>
-</tbody>
-</table>
+<p><strong><code>beta</code></strong> — Effect size: <span class="math display">\[\hat{\beta}_i = \frac{\text{Cov}(g_i,
+y^*)}{\text{Var}(g_i)}\]</span></p>
+<p><strong><code>SE</code></strong> — Standard error: <span class="math display">\[\widehat{\text{SE}}(\hat{\beta}_i) =
+\sqrt{\frac{\hat{\sigma}^2}{\sum_j(g_{ij}-\bar{g}_i)^2}}, \quad
+\hat{\sigma}^2 = \frac{\text{RSS}}{n-2}\]</span></p>
+<p><strong><code>z_score</code></strong> — z-score: <span class="math display">\[z_i =
+\frac{\hat{\beta}_i}{\widehat{\text{SE}}(\hat{\beta}_i)}\]</span></p>
+<p><strong><code>P.value</code></strong> — Two-tailed <span class="math inline">\(t\)</span>-test: <span class="math display">\[p_i
+= 2\,\Pr\!\left(T_{n-2} &gt; |z_i|\right)\]</span></p>
+<p><strong><code>PVE</code></strong> — <span class="math inline">\(R^2_i\)</span> from the marginal regression.</p>
+<p><strong><code>AF</code></strong> — ALT allele frequency <span class="math inline">\(= \bar{g}_i / 2\)</span>.</p>
+<p><strong><code>MAF</code></strong> — <span class="math inline">\(\min(\text{AF}_i,\;1-\text{AF}_i)\)</span>.</p>
 <p>SNPs with fewer than 5 complete observations or zero variance receive
 <code>NA</code> for all statistical columns.</p>
 </div>
