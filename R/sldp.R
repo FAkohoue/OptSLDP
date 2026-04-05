@@ -2,8 +2,8 @@
 # OptSLDP -- sldp.R
 # Main pipeline: run_sldp()
 #
-# Changes in v4
-# -------------
+# v0.1.0 changes
+# --------------
 # Multi-trait:
 #   trait_col accepts a character vector.  When length > 1 the pipeline runs
 #   screening and candidate selection separately for every trait, then takes
@@ -11,10 +11,21 @@
 #   Every SNP important for any trait is protected.  The return value carries
 #   a per-trait breakdown alongside the shared final panel.
 #
-# Inspiration 5 -- gc() in the background pruning chromosome loop:
-#   After processing each chromosome in the in-memory background pruning loop
-#   the r^2 matrix is explicitly freed and gc(FALSE) is called, preventing
-#   allocator fragmentation from accumulating across 20-30 chromosomes.
+# Fast GRM-based PCA (step 4b):
+#   When n_pcs > 0 and covar_cols is NULL, PCs are computed AFTER MAF
+#   filtering from a chromosome-balanced SNP subset via GRM eigendecomposition.
+#   No LD pruning pass required.  Subset size: all (<5k), 20k (5k-200k),
+#   30k (200k-1M), 40k (>1M, pca_max_snps).  Proportional chromosome
+#   allocation uses division-first arithmetic to avoid integer overflow on
+#   large WGS panels.  Optional RSpectra backend for partial eigendecomposition.
+#
+# Sequential GDS background pruning (step 9):
+#   Each chromosome opens its own fresh read-only GDS handle and closes it
+#   immediately after, ensuring clean handle state on all platforms.
+#
+# gc() in the background pruning chromosome loop:
+#   After processing each chromosome the r^2 matrix is explicitly freed and
+#   gc(FALSE) is called, preventing allocator fragmentation.
 # ==============================================================================
 
 
@@ -398,13 +409,27 @@ run_sldp <- function(genotype_file,
                      " (from ", total_snps, " post-MAF SNPs)",
                      verbose = verbose)
 
-    # -- Chromosome-balanced sampling ----------------------------------------
+    # -- Chromosome-balanced sampling (overflow-safe) ------------------------
+    # Proportional allocation: each chromosome contributes SNPs in proportion
+    # to its share of the post-MAF panel.
+    #   n_take_chr = round(target_snps * n_chr / total_snps)
+    # All three operands cast to numeric before multiplication to avoid the
+    # integer overflow that occurs when target_snps * n_chr exceeds 2^31-1
+    # (e.g. 40000 * 400000 = 16e9 on a large WGS panel).
     set.seed(pca_seed)
     chr_levels_pca <- unique(snp_info$CHR)
     pca_snps <- unique(unlist(lapply(chr_levels_pca, function(chr) {
       chr_ids <- snp_info$SNP[snp_info$CHR == chr]
-      n_take  <- max(1L, round(target_snps * length(chr_ids) / total_snps))
-      sample(chr_ids, min(n_take, length(chr_ids)), replace = FALSE)
+      n_chr   <- length(chr_ids)
+      if (n_chr == 0L) return(character(0L))
+      n_take  <- max(
+        1L,
+        as.integer(round(
+          as.numeric(target_snps) * as.numeric(n_chr) / as.numeric(total_snps)
+        ))
+      )
+      n_take  <- min(n_take, n_chr)
+      sample(chr_ids, n_take, replace = FALSE)
     }), use.names = FALSE))
 
     .report_progress("    Chromosome-balanced subset: ", length(pca_snps),
