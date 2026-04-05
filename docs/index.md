@@ -54,6 +54,9 @@ OptSLDP improves on that foundation in four concrete ways:
     simultaneously using FORK workers on Linux (one GDS handle per
     worker), reducing background pruning time from ~66 minutes to ~8
     minutes for 11-chromosome rice WGS data.
+12. **Automatic PCA for population structure** — set `n_pcs` to compute
+    principal components automatically from a LD-pruned SNP subset and
+    use them as GLM covariates. No pre-computation required.
 
 OptSLDP is also inspired by the genome-wide association study-derived
 marker weighting approach of Akohoue et al. (2026) for blast resistance
@@ -253,27 +256,62 @@ that SNP. The minor allele frequency is:
 SNPs with \\\text{MAF}\_i \< \tau\_{\text{maf}}\\ (default 0.05) are
 removed before any further analysis.
 
-### 2. Marginal SNP screening
+### 2. Marginal SNP screening (GLM + PCA)
 
-For each SNP \\i\\ a simple marginal linear regression is fitted:
+OptSLDP uses a **Generalised Linear Model (GLM) with principal component
+covariates** for marker screening. For each SNP \\i\\ a marginal linear
+regression is fitted:
 
 \\y^\* = \alpha + \beta_i\\ g_i + \varepsilon\\
 
-where \\y^\*\\ is the working phenotype (see below), \\g_i\\ is the
-dosage vector for SNP \\i\\, and \\\varepsilon \sim \mathcal{N}(0,
-\sigma^2 I)\\.
+where \\y^\*\\ is the phenotype pre-adjusted for population structure
+(see below), \\g_i\\ is the dosage vector for SNP \\i\\, and
+\\\varepsilon \sim \mathcal{N}(0, \sigma^2 I)\\.
 
-**Covariate adjustment.** When covariates \\X_c\\ are supplied, \\y\\ is
-first projected onto the covariate space and the residuals are used as
-the working phenotype:
+**Why GLM + PCA is the right choice for panel construction.** The goal
+of the screening step in SLDP is not to produce a publication-quality
+GWAS — it is to identify which genomic regions carry relevant biological
+signal so that all markers in those regions can be protected from
+pruning. This distinction has important practical consequences:
+
+- **False positives are tolerable.** A false-positive candidate SNP
+  simply causes its surrounding window to be retained in the panel. This
+  costs a modest number of extra markers but does not corrupt the panel
+  or introduce bias into downstream genomic prediction models.
+- **False negatives are the real risk.** If a true QTL region is missed
+  by an overly conservative screening model, its markers are pruned away
+  and permanently lost from the panel. GLM + PCA strikes the right
+  balance — it controls gross inflation from population stratification
+  without over-correcting and suppressing true signal.
+- **The LD expansion layer provides a natural buffer.** Even if a causal
+  variant is not itself significant, any flanking SNP within \\\pm w\\
+  kb that passes the threshold will pull the entire window into the
+  protected set. This makes the panel robust to moderate screening
+  imprecision.
+
+Mixed model approaches (EMMA, EMMAX, GCTA-MLMA) are more powerful for
+fine-mapping but add O(n^3) computational cost and are unnecessary for
+the panel construction objective. For datasets with strong population
+structure and clear subgroups, increasing `n_pcs` from 3 to 5 is usually
+sufficient.
+
+**Population structure correction.** When `n_pcs > 0` (or `covar_cols`
+is supplied), \\y\\ is first projected onto the covariate space and the
+residuals are used as the working phenotype:
 
 \\y^\* = y - X_c\\\left(X_c^\top X_c\right)^{-1} X_c^\top y = M\_{X_c}\\
 y\\
 
-where \\M\_{X_c}\\ is the residual maker (annihilator) matrix. This is
-equivalent to fitting \\y \sim X_c + g_i\\ and reading off the
-coefficient of \\g_i\\, but residualisation is performed once before the
-SNP loop rather than re-fitting covariates for every SNP.
+where \\M\_{X_c}\\ is the annihilator matrix and \\X_c\\ contains the PC
+scores. This is equivalent to fitting \\y \sim \text{PC1} + \text{PC2} +
+\cdots + g_i\\ for every SNP but residualisation is performed once
+before the SNP loop, giving an \\O(n_c)\\ saving over re-fitting
+covariates \\p\\ times.
+
+When `n_pcs > 0` and `covar_cols = NULL`, PCs are computed automatically
+from a LD-pruned SNP subset via `snpgdsPCA()`. The user only specifies
+how many PCs to include. Typical values: 3 for mildly structured
+populations, 5 for panels with clear subgroup separation.
 
 **Reported statistics per SNP:**
 
@@ -477,6 +515,7 @@ in order:
 | 1 | Read genotype file (optionally clean malformed lines) | `format`, `clean_malformed` |
 | 2 | Read phenotype, align samples | `sample_col`, `trait_col`, `covar_cols` |
 | 3 | Select scale strategy, write GDS if needed | `scale_strategy`, `gds_dir`, `n_cores` |
+| 3b | Automatic PCA for population structure *(optional)* | `n_pcs` |
 | 4 | MAF filter | `maf_threshold` |
 | 5 | High-LD pre-pruning *(optional)* | `preprune_large`, `preprune_r2` |
 | 6 | Chromosome-streaming screening: extract one chromosome at a time, screen it, accumulate statistics, free RAM before next chromosome *(GDS)*; or screen full in-memory matrix *(in_memory/chunked)* | — |

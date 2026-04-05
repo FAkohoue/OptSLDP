@@ -208,6 +208,11 @@ peak RAM ~300 MB vs ~4 GB for full extraction</td>
 <td>Step 9 uses FORK workers (one GDS handle per worker) to prune
 chromosomes simultaneously; ~8x speedup on multi-core Linux servers</td>
 </tr>
+<tr class="even">
+<td>Automatic PCA (<code>n_pcs</code>)</td>
+<td>PCs computed from LD-pruned SNPs via <code>snpgdsPCA()</code> and
+used as GLM covariates; no pre-computation required</td>
+</tr>
 </tbody>
 </table>
 <hr>
@@ -219,7 +224,7 @@ chromosomes simultaneously; ~8x speedup on multi-core Linux servers</td>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install from GitHub (with vignettes)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
@@ -227,11 +232,11 @@ chromosomes simultaneously; ~8x speedup on multi-core Linux servers</td>
 <span><span class="co"># Optional: VCF support (Bioconductor)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
 <span>                       <span class="st">"SummarizedExperiment"</span>, <span class="st">"Biostrings"</span>, <span class="st">"S4Vectors"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Optional: GDS backend for &gt; 2 M SNP panels (Bioconductor)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Load the package:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://FAkohoue.github.io/OptSLDP">OptSLDP</a></span><span class="op">)</span></span></code></pre></div>
@@ -634,24 +639,63 @@ accumulating across chromosomes:</p>
 <h2 id="marginal-snp-screening">Marginal SNP screening<a class="anchor" aria-label="anchor" href="#marginal-snp-screening"></a>
 </h2>
 <div class="section level3">
-<h3 id="statistical-model">Statistical model<a class="anchor" aria-label="anchor" href="#statistical-model"></a>
+<h3 id="statistical-model-glm-pca">Statistical model: GLM + PCA<a class="anchor" aria-label="anchor" href="#statistical-model-glm-pca"></a>
 </h3>
-<p>For each SNP <span class="math inline">\(i\)</span>, a marginal
-linear regression is fitted:</p>
+<p>OptSLDP uses a <strong>Generalised Linear Model (GLM) with principal
+component covariates</strong> for marker screening. For each SNP <span class="math inline">\(i\)</span>, a marginal linear regression is
+fitted:</p>
 <p><span class="math display">\[y^* = \alpha + \beta_i\, g_i +
 \varepsilon, \quad \varepsilon \sim \mathcal{N}(0, \sigma^2
 I)\]</span></p>
-<p>where <span class="math inline">\(y^*\)</span> is the working
-phenotype (see covariate adjustment below), <span class="math inline">\(g_i\)</span> is the dosage vector for SNP <span class="math inline">\(i\)</span>, and <span class="math inline">\(\alpha\)</span>, <span class="math inline">\(\beta_i\)</span> are intercept and effect
+<p>where <span class="math inline">\(y^*\)</span> is the
+population-structure-adjusted phenotype, <span class="math inline">\(g_i\)</span> is the dosage vector for SNP <span class="math inline">\(i\)</span>, and <span class="math inline">\(\alpha\)</span>, <span class="math inline">\(\beta_i\)</span> are intercept and effect
 size.</p>
-<p><strong>Covariate adjustment.</strong> When covariates <span class="math inline">\(X_c\)</span> are supplied, the phenotype is
-residualised once before the SNP loop:</p>
+<div class="section level4">
+<h4 id="why-glm-pca-for-panel-construction">Why GLM + PCA for panel construction?<a class="anchor" aria-label="anchor" href="#why-glm-pca-for-panel-construction"></a>
+</h4>
+<p>The SLDP screening step has a fundamentally different objective from
+a standard GWAS. Its purpose is to identify which genomic regions carry
+relevant biological signal so that all markers in those regions can be
+<strong>protected from LD pruning</strong>. This distinction changes
+which statistical properties matter:</p>
+<p><strong>False positives are tolerable.</strong> A false-positive
+candidate SNP causes its surrounding <span class="math inline">\(\pm
+w\)</span> kb window to be retained in the panel. This adds a modest
+number of extra markers but does not corrupt the panel or bias
+downstream genomic prediction models. The final panel size increases
+slightly but all true signal is preserved.</p>
+<p><strong>False negatives are the real risk.</strong> If a true QTL
+region is missed by an overly conservative screening model, its markers
+are pruned away and permanently lost from the panel. GLM + PCA controls
+gross inflation from population stratification without over-correcting
+and suppressing true biological signal.</p>
+<p><strong>The LD expansion layer provides a natural buffer.</strong>
+Even if a causal variant is not itself significant, any flanking SNP
+within <span class="math inline">\(\pm w\)</span> kb that passes the
+threshold will pull the entire window into the protected set. This makes
+the panel robust to moderate screening imprecision.</p>
+<p>Mixed model approaches (EMMA, EMMAX, GCTA-MLMA) are statistically
+more powerful for fine-mapping but add <span class="math inline">\(O(n^3)\)</span> computational cost from the
+eigendecomposition of the genomic relationship matrix. This cost is
+unnecessary for the panel construction objective. For datasets with
+strong population structure, increasing <code>n_pcs</code> from 3 to 5
+is usually sufficient.</p>
+</div>
+<div class="section level4">
+<h4 id="population-structure-correction">Population structure correction<a class="anchor" aria-label="anchor" href="#population-structure-correction"></a>
+</h4>
+<p>When covariates <span class="math inline">\(X_c\)</span> (PC scores)
+are supplied, the phenotype is residualised once before the SNP
+loop:</p>
 <p><span class="math display">\[y^* = M_{X_c}\, y = \left[I -
 X_c(X_c^\top X_c)^{-1} X_c^\top\right] y\]</span></p>
 <p>This is equivalent to fitting <span class="math inline">\(y \sim X_c
 + g_i\)</span> for every SNP but avoids refitting covariates in each
-regression, giving an <span class="math inline">\(O(n)\)</span> saving
-over <span class="math inline">\(O(n \cdot p)\)</span>.</p>
+regression, giving an <span class="math inline">\(O(n_c)\)</span> saving
+over <span class="math inline">\(O(n_c \cdot p)\)</span>. When
+<code>n_pcs &gt; 0</code> and <code>covar_cols = NULL</code>, PCs are
+computed automatically from a LD-pruned SNP subset before screening
+begins.</p>
 <p><strong>Reported statistics per SNP:</strong></p>
 <table class="table">
 <colgroup>
@@ -707,6 +751,7 @@ regression</td>
 </table>
 <p>SNPs with fewer than 5 complete observations or zero variance receive
 <code>NA</code> for all statistical columns.</p>
+</div>
 </div>
 <div class="section level3">
 <h3 id="single-trait-screening">Single-trait screening<a class="anchor" aria-label="anchor" href="#single-trait-screening"></a>
@@ -1174,18 +1219,24 @@ and an output path; everything else is handled internally.</p>
 </td>
 </tr>
 <tr class="even">
+<td>3b</td>
+<td>Automatic PCA <em>(optional)</em>
+</td>
+<td><code>n_pcs</code></td>
+</tr>
+<tr class="odd">
 <td>4</td>
 <td>MAF filter</td>
 <td><code>maf_threshold</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>5 (optional)</td>
 <td>High-LD pre-pruning</td>
 <td>
 <code>preprune_large</code>, <code>preprune_r2</code>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>6</td>
 <td>Chromosome-streaming screening: one chromosome extracted, screened
 and freed at a time <em>(GDS)</em>; full matrix screened directly
@@ -1193,7 +1244,7 @@ and freed at a time <em>(GDS)</em>; full matrix screened directly
 </td>
 <td>—</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>7</td>
 <td>Candidate selection from pre-computed screening statistics</td>
 <td>
@@ -1202,7 +1253,7 @@ and freed at a time <em>(GDS)</em>; full matrix screened directly
 <code>threshold_logic</code>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>8</td>
 <td>Important SNP expansion</td>
 <td>
@@ -1210,26 +1261,26 @@ and freed at a time <em>(GDS)</em>; full matrix screened directly
 <code>r2_flag</code>
 </td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>9</td>
 <td>Background LD pruning</td>
 <td>
 <code>r2_genome</code>, <code>slide_max_bp</code>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>10</td>
 <td>Merge important + retained background</td>
 <td>—</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>11</td>
 <td>Write pruned output file: chromosome-streaming from GDS
 <em>(GDS)</em> or direct write <em>(in_memory/chunked)</em>;
 <code>final_geno_mat</code> is <code>NULL</code> for GDS runs</td>
 <td><code>output_format</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>12</td>
 <td>Write pruning report (optional)</td>
 <td>

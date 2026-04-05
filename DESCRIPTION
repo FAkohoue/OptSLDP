@@ -14,8 +14,9 @@ Description: Implements OptSLDP, an optimized and extended version of the
     threshold scanning, greedy pruning); a compiled C++ screening kernel with
     genotype-variance caching across traits; chromosome-streaming screening
     that accumulates only statistics without loading full genotype matrices;
-    chromosome-streaming output writing; and parallel background pruning via
-    independent per-worker GDS handles. Supports three input formats (numeric
+    chromosome-streaming output writing; parallel background pruning via
+    independent per-worker GDS handles; and automatic PCA for population
+    structure correction via the `n_pcs` parameter. Supports three input formats (numeric
     dosage, HapMap, VCF), three candidate selection modes (p-value, z-score,
     PVE), positional and LD-based expansion of protected marker sets,
     chromosome-wise background pruning, and stream-cleaning of malformed

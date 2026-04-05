@@ -10,7 +10,7 @@ Checked on:
 
 ## Test suite
 
-- 195 tests passing, 0 failures, 0 skipped
+- 204 tests passing, 0 failures, 0 skipped
 - Test file: `tests/testthat/test-basic.R`
 - Covers: I/O (all 3 formats), MAF filtering, pre-pruning, screening
   (single- and multi-trait), candidate selection (modes A/B/C),

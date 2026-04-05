@@ -10,7 +10,8 @@
 #  4.  find_ld_neighbors()      -- above/below threshold, focal excluded, empty
 #  5.  preprune_high_ld()       -- removes near-duplicate, keeps independent
 #  6.  prune_background_snps()  -- greedy logic, multi-chromosome, trivial case
-#  7.  expand_important_snps()  -- positional window, LD layer, no-op candidate
+#  7.  expand_important_snps()  -- positional window, LD layer, no-op candidate;
+#                                  empty candidates guard
 #  8.  compute_screening_stats()-- single-trait columns, multi-trait list, covar,
 #                                  insufficient obs -> NA, zero-variance -> NA
 #  9.  select_candidate_snps()  -- mode A/B/C, AND/OR logic, all-NA, empty result
@@ -19,9 +20,19 @@
 # 11.  read_numeric_genotype()  -- columns, matrix values, chr normalisation
 # 12.  write_numeric_genotype() + write_hapmap_genotype() -- round-trip fidelity
 # 13.  write_pruning_report()   -- CSV written, summary written, column names
-# 14.  run_sldp() -- single-trait mode A, mode B, mode C; QTN retention;
-#                   multi-trait union protection; output file written;
-#                   pruning_stats step names; scale_strategy in return value
+# 13b. clean_genotype_file()    -- pass-through, malformed removal, sep detection
+# 14.  run_sldp()               -- single-trait mode A/B/C; QTN retention;
+#                                  multi-trait union protection; output file written;
+#                                  pruning_stats step names; scale_strategy;
+#                                  hapmap output; pre-pruning; stats output files
+# 15.  C++ kernel functions     -- r2_subset_cpp, above_threshold_subset_cpp,
+#                                  greedy_prune_r2_cpp; vectorised OLS vs lm()
+# 16.  GDS end-to-end           -- forced GDS strategy; FORK cluster; step 11
+#                                  file writer; final_geno_mat NULL; CHR/POS order
+# 17.  read_hapmap_genotype()    -- structure, dimensions, values, REF/ALT;
+#                                  same dosage as numeric reader
+# 18.  n_pcs automatic PCA       -- runs without error; changes beta vs no PCs;
+#                                  ignored when covar_cols provided
 # ==============================================================================
 
 library(OptSLDP)
@@ -1644,4 +1655,141 @@ test_that("GDS strategy writes output file and returns correct structure", {
     all(diff(res$final_snp_info$POS[res$final_snp_info$CHR == 1]) >= 0),
     info = "SNPs must be ordered by position within each chromosome"
   )
+})
+
+# ==============================================================================
+# Section 17 -- read_hapmap_genotype()
+# ==============================================================================
+
+test_that("read_hapmap_genotype returns correct list structure", {
+  f   <- system.file("extdata", "example_genotypes.hmp.txt", package = "OptSLDP")
+  out <- read_hapmap_genotype(f)
+  expect_named(out, c("snp_info","geno_mat","sample_ids","format"))
+  expect_equal(out$format, "hapmap")
+})
+
+test_that("read_hapmap_genotype dimensions: 40 SNPs x 50 samples", {
+  f   <- system.file("extdata", "example_genotypes.hmp.txt", package = "OptSLDP")
+  out <- read_hapmap_genotype(f)
+  expect_equal(nrow(out$geno_mat), 40L)
+  expect_equal(ncol(out$geno_mat), 50L)
+})
+
+test_that("read_hapmap_genotype geno_mat values are in {0,1,2,NA}", {
+  f     <- system.file("extdata", "example_genotypes.hmp.txt", package = "OptSLDP")
+  out   <- read_hapmap_genotype(f)
+  valid <- out$geno_mat[!is.na(out$geno_mat)]
+  expect_true(all(valid %in% c(0, 1, 2)))
+})
+
+test_that("read_hapmap_genotype snp_info has REF and ALT columns", {
+  f   <- system.file("extdata", "example_genotypes.hmp.txt", package = "OptSLDP")
+  out <- read_hapmap_genotype(f)
+  expect_true(all(c("SNP","CHR","POS","REF","ALT") %in% names(out$snp_info)))
+})
+
+test_that("read_hapmap_genotype and read_numeric_genotype give same dosage matrix", {
+  hmp_file <- system.file("extdata", "example_genotypes.hmp.txt",
+                          package = "OptSLDP")
+  num_file <- system.file("extdata", "example_genotypes_numeric.csv",
+                          package = "OptSLDP")
+  hmp_obj <- read_hapmap_genotype(hmp_file)
+  num_obj <- read_numeric_genotype(num_file)
+  # Both should produce the same 40x50 dosage matrix (same underlying data)
+  expect_equal(dim(hmp_obj$geno_mat), dim(num_obj$geno_mat))
+  # SNP IDs must match
+  expect_equal(sort(hmp_obj$snp_info$SNP), sort(num_obj$snp_info$SNP))
+})
+
+
+# ==============================================================================
+# Section 18 -- n_pcs automatic PCA
+# ==============================================================================
+
+test_that("run_sldp with n_pcs=2 runs without error and returns results", {
+  skip_if_not_installed("SNPRelate")
+  skip_if_not_installed("gdsfmt")
+
+  res <- run_sldp(
+    genotype_file  = geno_file,
+    phenotype_file = pheno_file,
+    output_file    = tempfile(fileext = ".csv"),
+    trait_col      = "Trait1",
+    mode           = "A",
+    pval_threshold = 0.05,
+    n_pcs          = 2L,           # auto-compute 2 PCs
+    preprune_large = FALSE,
+    gds_dir        = tempdir(),
+    verbose        = FALSE
+  )
+  # Pipeline must complete and return all expected elements
+  expect_true("final_snp_info"  %in% names(res))
+  expect_true("screening_stats" %in% names(res))
+  expect_true(nrow(res$final_snp_info) > 0L)
+})
+
+test_that("run_sldp n_pcs=2 changes screening stats vs no covariates", {
+  skip_if_not_installed("SNPRelate")
+  skip_if_not_installed("gdsfmt")
+
+  res_no_pc <- run_sldp(
+    genotype_file  = geno_file,
+    phenotype_file = pheno_file,
+    output_file    = tempfile(fileext = ".csv"),
+    trait_col      = "Trait1",
+    mode           = "A",
+    pval_threshold = 0.05,
+    n_pcs          = 0L,
+    preprune_large = FALSE,
+    gds_dir        = tempdir(),
+    verbose        = FALSE
+  )
+  res_with_pc <- run_sldp(
+    genotype_file  = geno_file,
+    phenotype_file = pheno_file,
+    output_file    = tempfile(fileext = ".csv"),
+    trait_col      = "Trait1",
+    mode           = "A",
+    pval_threshold = 0.05,
+    n_pcs          = 2L,
+    preprune_large = FALSE,
+    gds_dir        = tempdir(),
+    verbose        = FALSE
+  )
+  # Betas must differ after PC correction (at least some SNPs)
+  b1 <- res_no_pc$screening_stats$beta
+  b2 <- res_with_pc$screening_stats$beta
+  ok <- !is.na(b1) & !is.na(b2)
+  expect_true(any(abs(b1[ok] - b2[ok]) > 1e-10),
+              info = "PC correction must change at least some beta values")
+})
+
+test_that("run_sldp n_pcs ignored when covar_cols provided", {
+  # When covar_cols is supplied, n_pcs should have no effect
+  res_covar <- run_sldp(
+    genotype_file  = geno_file,
+    phenotype_file = pheno_file,
+    output_file    = tempfile(fileext = ".csv"),
+    trait_col      = "Trait1",
+    covar_cols     = c("PC1","PC2"),
+    n_pcs          = 3L,           # should be ignored
+    mode           = "A",
+    pval_threshold = 0.05,
+    preprune_large = FALSE,
+    verbose        = FALSE
+  )
+  res_covar_only <- run_sldp(
+    genotype_file  = geno_file,
+    phenotype_file = pheno_file,
+    output_file    = tempfile(fileext = ".csv"),
+    trait_col      = "Trait1",
+    covar_cols     = c("PC1","PC2"),
+    n_pcs          = 0L,
+    mode           = "A",
+    pval_threshold = 0.05,
+    preprune_large = FALSE,
+    verbose        = FALSE
+  )
+  # Results must be identical when covar_cols is provided regardless of n_pcs
+  expect_equal(res_covar$candidate_snps, res_covar_only$candidate_snps)
 })

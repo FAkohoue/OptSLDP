@@ -73,6 +73,7 @@ The final panel is $\mathcal{I} \cup \text{retained}(\mathcal{B})$.
 | Chromosome-streaming screening | Step 6 extracts and screens one 50k-SNP chunk at a time in GDS mode; peak RAM ~300 MB vs ~4 GB for full extraction |
 | Chromosome-streaming output | Step 11 writes final panel chromosome-by-chromosome from GDS; `final_geno_mat` is `NULL` for GDS runs |
 | Parallel background pruning | Step 9 uses FORK workers (one GDS handle per worker) to prune chromosomes simultaneously; ~8x speedup on multi-core Linux servers |
+| Automatic PCA (`n_pcs`) | PCs computed from LD-pruned SNPs via `snpgdsPCA()` and used as GLM covariates; no pre-computation required |
 
 ---
 
@@ -373,23 +374,60 @@ gc(FALSE)   # explicit release before the next chromosome
 
 # Marginal SNP screening
 
-## Statistical model
+## Statistical model: GLM + PCA
 
-For each SNP $i$, a marginal linear regression is fitted:
+OptSLDP uses a **Generalised Linear Model (GLM) with principal component
+covariates** for marker screening. For each SNP $i$, a marginal linear
+regression is fitted:
 
 $$y^* = \alpha + \beta_i\, g_i + \varepsilon, \quad \varepsilon \sim \mathcal{N}(0, \sigma^2 I)$$
 
-where $y^*$ is the working phenotype (see covariate adjustment below), $g_i$
-is the dosage vector for SNP $i$, and $\alpha$, $\beta_i$ are intercept and
+where $y^*$ is the population-structure-adjusted phenotype, $g_i$ is the
+dosage vector for SNP $i$, and $\alpha$, $\beta_i$ are intercept and
 effect size.
 
-**Covariate adjustment.** When covariates $X_c$ are supplied, the phenotype
-is residualised once before the SNP loop:
+### Why GLM + PCA for panel construction?
+
+The SLDP screening step has a fundamentally different objective from a
+standard GWAS. Its purpose is to identify which genomic regions carry
+relevant biological signal so that all markers in those regions can be
+**protected from LD pruning**. This distinction changes which statistical
+properties matter:
+
+**False positives are tolerable.** A false-positive candidate SNP causes
+its surrounding $\pm w$ kb window to be retained in the panel. This adds
+a modest number of extra markers but does not corrupt the panel or bias
+downstream genomic prediction models. The final panel size increases
+slightly but all true signal is preserved.
+
+**False negatives are the real risk.** If a true QTL region is missed by
+an overly conservative screening model, its markers are pruned away and
+permanently lost from the panel. GLM + PCA controls gross inflation from
+population stratification without over-correcting and suppressing true
+biological signal.
+
+**The LD expansion layer provides a natural buffer.** Even if a causal
+variant is not itself significant, any flanking SNP within $\pm w$ kb that
+passes the threshold will pull the entire window into the protected set.
+This makes the panel robust to moderate screening imprecision.
+
+Mixed model approaches (EMMA, EMMAX, GCTA-MLMA) are statistically more
+powerful for fine-mapping but add $O(n^3)$ computational cost from the
+eigendecomposition of the genomic relationship matrix. This cost is
+unnecessary for the panel construction objective. For datasets with strong
+population structure, increasing `n_pcs` from 3 to 5 is usually sufficient.
+
+### Population structure correction
+
+When covariates $X_c$ (PC scores) are supplied, the phenotype is
+residualised once before the SNP loop:
 
 $$y^* = M_{X_c}\, y = \left[I - X_c(X_c^\top X_c)^{-1} X_c^\top\right] y$$
 
 This is equivalent to fitting $y \sim X_c + g_i$ for every SNP but avoids
-refitting covariates in each regression, giving an $O(n)$ saving over $O(n \cdot p)$.
+refitting covariates in each regression, giving an $O(n_c)$ saving over
+$O(n_c \cdot p)$. When `n_pcs > 0` and `covar_cols = NULL`, PCs are
+computed automatically from a LD-pruned SNP subset before screening begins.
 
 **Reported statistics per SNP:**
 
@@ -740,6 +778,7 @@ else is handled internally.
 | 1 | Read genotype file (optionally clean malformed lines) | `format`, `clean_malformed` |
 | 2 | Read and align phenotype | `sample_col`, `trait_col`, `covar_cols` |
 | 3 | Select scale strategy | `scale_strategy`, `gds_dir`, `n_cores` |
+| 3b | Automatic PCA *(optional)* | `n_pcs` |
 | 4 | MAF filter | `maf_threshold` |
 | 5 (optional) | High-LD pre-pruning | `preprune_large`, `preprune_r2` |
 | 6 | Chromosome-streaming screening: one chromosome extracted, screened and freed at a time *(GDS)*; full matrix screened directly *(in_memory/chunked)* | — |

@@ -73,6 +73,38 @@
   replaced with plain-text formulas to avoid complex `\widehat`, `\frac`
   inside markdown table cells.
 
+- **GDS FORK handle corruption fixed (step 11)** – after the parallel
+  FORK cluster in step 9, the parent GDS handle was in an invalid state
+  causing step 11 to silently skip all chromosomes and produce no output
+  file. Fixed by explicitly closing and reopening `ctx$genofile` before
+  the output writing loop.
+
+- **Duplicate GDS open error fixed (step 9)** – FORK workers failed with
+  “file has been created or opened” because SNPRelate tracks open files
+  globally and the parent handle was still open when workers tried to
+  open the same file. Fixed by closing the parent handle before
+  `makeCluster()` and reopening after all workers exit.
+
+- **[`expand_important_snps()`](https://FAkohoue.github.io/OptSLDP/reference/expand_important_snps.md)
+  empty candidates guard** – previously crashed with a cryptic
+  `merge.data.table` error when no candidates passed the screening
+  threshold. Now returns `character(0)` immediately.
+
+### New features
+
+- **Automatic PCA for population structure (`n_pcs`)** –
+  [`run_sldp()`](https://FAkohoue.github.io/OptSLDP/reference/run_sldp.md)
+  gains an `n_pcs` parameter. When set \> 0 and `covar_cols` is `NULL`,
+  principal components are computed automatically from a LD-pruned SNP
+  subset via `snpgdsPCA()` and used as covariates for screening. Users
+  specify only the number of PCs; no pre-computation required. Typical
+  usage: `n_pcs = 3L`.
+
+- **GDS end-to-end test (section 16)** – forces `scale_strategy = "gds"`
+  on the small example dataset to exercise the full GDS path including
+  FORK cluster and step 11 file writer. Catches future GDS handle
+  corruption bugs.
+
 ### Infrastructure
 
 - **`utils_cpp.R` rewritten** – `.get_cpp_fun()` / `.cpp_available()`

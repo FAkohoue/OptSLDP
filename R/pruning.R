@@ -289,9 +289,8 @@ prune_background_snps <- function(remaining_snps,
       if (length(chr_snps) <= 1L) return(chr_snps)
 
       # Each worker opens its own independent read-only GDS handle.
-      # FORK workers inherit the parent namespace so .prune_background_chr_gds
-      # and .snprelate_call are available without re-loading the package.
-      # allow.fork = TRUE is required to suppress SNPRelate's fork warning.
+      # The parent handle is closed before the cluster starts (see below)
+      # so SNPRelate does not see duplicate opens.
       gf <- tryCatch(
         SNPRelate::snpgdsOpen(gds_path, readonly = TRUE, allow.fork = TRUE),
         error = function(e) stop("Worker failed to open GDS: ", e$message)
@@ -308,12 +307,15 @@ prune_background_snps <- function(remaining_snps,
     }
 
     if (n_workers > 1L) {
-      # FORK cluster: shared memory, no data serialisation overhead
+      # Close the parent GDS handle BEFORE forking so SNPRelate does not
+      # see the same file opened twice (parent + worker = duplicate open error).
+      # The parent reopens its handle after all workers have finished.
+      tryCatch(SNPRelate::snpgdsClose(ctx$genofile),
+               error = function(e) NULL)
+
       cl <- parallel::makeCluster(n_workers, type = "FORK")
       on.exit(parallel::stopCluster(cl), add = TRUE)
 
-      # FORK workers inherit rem_info, r2_genome, slide_max_bp, gds_path,
-      # threads_per_chr, and all package internals from the parent process.
       results <- parallel::parLapply(cl, chr_levels, function(chr) {
         n_chr_snps <- length(rem_info$SNP[rem_info$CHR == chr])
         message(format(Sys.time(), "[%Y-%m-%d %H:%M:%S]"),
@@ -321,6 +323,13 @@ prune_background_snps <- function(remaining_snps,
                 " (", n_chr_snps, " SNPs) [GDS parallel]")
         prune_one_chr(chr)
       })
+
+      parallel::stopCluster(cl)
+
+      # Reopen parent handle now that all workers have exited
+      ctx$genofile <- SNPRelate::snpgdsOpen(gds_path, readonly = TRUE,
+                                            allow.fork = TRUE)
+
     } else {
       # Sequential fallback (Windows or single core)
       results <- lapply(chr_levels, function(chr) {

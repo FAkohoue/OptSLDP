@@ -88,7 +88,7 @@
 </h1>
 </div>
 <p align="center">
-<img src="reference/figures/logo.png" alt="OptSLDP logo" width="180px"></p>
+<img src="reference/figures/logo.png" alt="OptSLDP logo" width="120px"></p>
 <!-- badges: start -->
 
 <p><code>OptSLDP</code> is an <strong>optimized and extended</strong> implementation of Selective Linkage Disequilibrium Pruning for genomic prediction panel construction. The core idea of SLDP — preserving all markers in strong LD with statistically important SNPs so that genomic models retain the full genetic signal around each QTL, while pruning redundant background markers — is retained from the original algorithm of Zhu et al. (2023). OptSLDP improves on that foundation in four concrete ways:</p>
@@ -115,6 +115,8 @@
 <strong>Chromosome-streaming output writing</strong> — step 11 writes the final panel chromosome by chromosome from GDS, keeping peak RAM proportional to one chromosome rather than the full final panel.</li>
 <li>
 <strong>Parallel background pruning</strong> — step 9 processes chromosomes simultaneously using FORK workers on Linux (one GDS handle per worker), reducing background pruning time from ~66 minutes to ~8 minutes for 11-chromosome rice WGS data.</li>
+<li>
+<strong>Automatic PCA for population structure</strong> — set <code>n_pcs</code> to compute principal components automatically from a LD-pruned SNP subset and use them as GLM covariates. No pre-computation required.</li>
 </ol>
 <p>OptSLDP is also inspired by the genome-wide association study-derived marker weighting approach of Akohoue et al. (2026) for blast resistance prediction in rice, and scales automatically from small in-memory panels to whole-genome sequencing datasets with more than 10 million SNPs.</p>
 <hr>
@@ -155,13 +157,13 @@
 <p>Install from GitHub with vignettes (recommended):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Install without vignettes for a faster install:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -170,11 +172,11 @@
 <code class="sourceCode R"><span><span class="co"># VCF input support (Bioconductor)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"VariantAnnotation"</span>, <span class="st">"GenomeInfoDb"</span>,</span>
 <span>                       <span class="st">"SummarizedExperiment"</span>, <span class="st">"Biostrings"</span>, <span class="st">"S4Vectors"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Large-panel GDS backend (&gt; 2 M SNPs, Bioconductor)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocManager/man/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Bioconductor packages are not installed automatically by <code>remotes</code> — run the blocks above once if you need VCF support or plan to work with whole-genome panels.</p>
 <hr>
 </div>
@@ -327,14 +329,25 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <p>SNPs with <span class="math inline">\(\text{MAF}_i &lt; \tau_{\text{maf}}\)</span> (default 0.05) are removed before any further analysis.</p>
 </div>
 <div class="section level3">
-<h3 id="id_2-marginal-snp-screening">2. Marginal SNP screening<a class="anchor" aria-label="anchor" href="#id_2-marginal-snp-screening"></a>
+<h3 id="id_2-marginal-snp-screening-glm--pca">2. Marginal SNP screening (GLM + PCA)<a class="anchor" aria-label="anchor" href="#id_2-marginal-snp-screening-glm--pca"></a>
 </h3>
-<p>For each SNP <span class="math inline">\(i\)</span> a simple marginal linear regression is fitted:</p>
+<p>OptSLDP uses a <strong>Generalised Linear Model (GLM) with principal component covariates</strong> for marker screening. For each SNP <span class="math inline">\(i\)</span> a marginal linear regression is fitted:</p>
 <p><span class="math display">\[y^* = \alpha + \beta_i\, g_i + \varepsilon\]</span></p>
-<p>where <span class="math inline">\(y^*\)</span> is the working phenotype (see below), <span class="math inline">\(g_i\)</span> is the dosage vector for SNP <span class="math inline">\(i\)</span>, and <span class="math inline">\(\varepsilon \sim \mathcal{N}(0, \sigma^2 I)\)</span>.</p>
-<p><strong>Covariate adjustment.</strong> When covariates <span class="math inline">\(X_c\)</span> are supplied, <span class="math inline">\(y\)</span> is first projected onto the covariate space and the residuals are used as the working phenotype:</p>
+<p>where <span class="math inline">\(y^*\)</span> is the phenotype pre-adjusted for population structure (see below), <span class="math inline">\(g_i\)</span> is the dosage vector for SNP <span class="math inline">\(i\)</span>, and <span class="math inline">\(\varepsilon \sim \mathcal{N}(0, \sigma^2 I)\)</span>.</p>
+<p><strong>Why GLM + PCA is the right choice for panel construction.</strong> The goal of the screening step in SLDP is not to produce a publication-quality GWAS — it is to identify which genomic regions carry relevant biological signal so that all markers in those regions can be protected from pruning. This distinction has important practical consequences:</p>
+<ul>
+<li>
+<strong>False positives are tolerable.</strong> A false-positive candidate SNP simply causes its surrounding window to be retained in the panel. This costs a modest number of extra markers but does not corrupt the panel or introduce bias into downstream genomic prediction models.</li>
+<li>
+<strong>False negatives are the real risk.</strong> If a true QTL region is missed by an overly conservative screening model, its markers are pruned away and permanently lost from the panel. GLM + PCA strikes the right balance — it controls gross inflation from population stratification without over-correcting and suppressing true signal.</li>
+<li>
+<strong>The LD expansion layer provides a natural buffer.</strong> Even if a causal variant is not itself significant, any flanking SNP within <span class="math inline">\(\pm w\)</span> kb that passes the threshold will pull the entire window into the protected set. This makes the panel robust to moderate screening imprecision.</li>
+</ul>
+<p>Mixed model approaches (EMMA, EMMAX, GCTA-MLMA) are more powerful for fine-mapping but add O(n^3) computational cost and are unnecessary for the panel construction objective. For datasets with strong population structure and clear subgroups, increasing <code>n_pcs</code> from 3 to 5 is usually sufficient.</p>
+<p><strong>Population structure correction.</strong> When <code>n_pcs &gt; 0</code> (or <code>covar_cols</code> is supplied), <span class="math inline">\(y\)</span> is first projected onto the covariate space and the residuals are used as the working phenotype:</p>
 <p><span class="math display">\[y^* = y - X_c\!\left(X_c^\top X_c\right)^{-1} X_c^\top y = M_{X_c}\, y\]</span></p>
-<p>where <span class="math inline">\(M_{X_c}\)</span> is the residual maker (annihilator) matrix. This is equivalent to fitting <span class="math inline">\(y \sim X_c + g_i\)</span> and reading off the coefficient of <span class="math inline">\(g_i\)</span>, but residualisation is performed once before the SNP loop rather than re-fitting covariates for every SNP.</p>
+<p>where <span class="math inline">\(M_{X_c}\)</span> is the annihilator matrix and <span class="math inline">\(X_c\)</span> contains the PC scores. This is equivalent to fitting <span class="math inline">\(y \sim \text{PC1} + \text{PC2} + \cdots + g_i\)</span> for every SNP but residualisation is performed once before the SNP loop, giving an <span class="math inline">\(O(n_c)\)</span> saving over re-fitting covariates <span class="math inline">\(p\)</span> times.</p>
+<p>When <code>n_pcs &gt; 0</code> and <code>covar_cols = NULL</code>, PCs are computed automatically from a LD-pruned SNP subset via <code>snpgdsPCA()</code>. The user only specifies how many PCs to include. Typical values: 3 for mildly structured populations, 5 for panels with clear subgroup separation.</p>
 <p><strong>Reported statistics per SNP:</strong></p>
 <table class="table">
 <colgroup>
@@ -542,6 +555,12 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <td>
 <code>scale_strategy</code>, <code>gds_dir</code>, <code>n_cores</code>
 </td>
+</tr>
+<tr>
+<td>3b</td>
+<td>Automatic PCA for population structure <em>(optional)</em>
+</td>
+<td><code>n_pcs</code></td>
 </tr>
 <tr>
 <td>4</td>

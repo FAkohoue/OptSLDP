@@ -87,6 +87,11 @@
 #'   character vector for multi-trait analysis.  Default `"Trait1"`.
 #' @param covar_cols          Covariate column name(s) in the phenotype file.
 #'   Covariates are shared across all traits.  `NULL` = no covariates.
+#' @param n_pcs               Number of principal components to compute
+#'   automatically from the genotype data and use as covariates. Computed via
+#'   `snpgdsPCA()` from SNPRelate on a LD-pruned SNP subset. Only used when
+#'   `covar_cols` is `NULL`. Set to `0` (default) to disable. Typical values:
+#'   3-5 for structured populations.
 #' @param format              Genotype format: `"auto"` (default), `"numeric"`,
 #'   `"hapmap"`, or `"vcf"`.
 #' @param output_format       Output format: `"numeric"` (default) or
@@ -171,18 +176,32 @@
 #'   output_format  = "hapmap"     # nucleotide calls: AA/AT/TT/NN
 #' )
 #'
-#' # -- Multi-trait: union protection -------------------------------------------
+#' # -- Multi-trait with automatic PCA (population structure correction) -------
 #' res <- run_sldp(
 #'   genotype_file  = geno_file,
 #'   phenotype_file = pheno_file,
 #'   output_file    = tempfile(fileext = ".csv"),
 #'   trait_col      = c("Trait1", "Trait2"),
-#'   covar_cols     = c("PC1", "PC2"),
+#'   n_pcs          = 3L,             # auto-compute 3 PCs from genotypes
 #'   mode           = "A",
 #'   pval_threshold = 0.05,
 #'   output_format  = "numeric"
 #' )
 #' # Inspect per-trait results
+#' names(res$screening_stats)          # "Trait1" "Trait2"
+#' res$candidate_snps_per_trait$Trait1
+#'
+#' # -- Multi-trait with user-supplied PCs ------------------------------------
+#' res <- run_sldp(
+#'   genotype_file  = geno_file,
+#'   phenotype_file = pheno_file,
+#'   output_file    = tempfile(fileext = ".csv"),
+#'   trait_col      = c("Trait1", "Trait2"),
+#'   covar_cols     = c("PC1", "PC2"),  # columns already in phenotype file
+#'   mode           = "A",
+#'   pval_threshold = 0.05,
+#'   output_format  = "numeric"
+#' )
 #' names(res$screening_stats)          # "Trait1" "Trait2"
 #' res$candidate_snps_per_trait$Trait1
 #' }
@@ -192,6 +211,7 @@ run_sldp <- function(genotype_file,
                      sample_col             = "Sample",
                      trait_col              = "Trait1",
                      covar_cols             = NULL,
+                     n_pcs                  = 0L,
                      format                 = c("auto", "numeric",
                                                 "hapmap", "vcf"),
                      output_format          = c("numeric", "hapmap"),
@@ -299,6 +319,89 @@ run_sldp <- function(genotype_file,
                                  gds_dir = gds_dir, n_cores = n_cores,
                                  verbose = verbose)
   geno_mat <- ctx$geno_mat   # NULL for GDS path
+
+  # -- Step 3b: Automatic PCA for population structure correction -------------
+  # When n_pcs > 0 and covar_cols is NULL, compute PCs from the GDS file
+  # and prepend them to the covariate matrix. Uses LD-pruned SNPs for speed.
+  # PCA runs on the full post-read SNP set (before MAF filter) so that the
+  # population structure estimate is based on maximum information.
+  if (n_pcs > 0L && is.null(covariates)) {
+    .report_progress("[3b] Computing ", n_pcs, " PCs for population structure ...",
+                     verbose = verbose)
+    .assert_packages("SNPRelate")
+
+    if (identical(strategy, "gds")) {
+      # Use the already-open GDS handle
+      pca_gf <- ctx$genofile
+    } else {
+      # For in-memory/chunked: write a temporary GDS, run PCA, clean up
+      pca_gds_path <- file.path(gds_dir, "sldp_pca_tmp.gds")
+      .write_gds(geno_mat, snp_info, pca_gds_path,
+                 n_cores = n_cores, verbose = FALSE)
+      pca_gf <- .open_gds(pca_gds_path, key = "pca_tmp")
+    }
+
+    # LD-prune to ~10k SNPs before PCA for speed and numerical stability
+    pca_snps <- tryCatch({
+      kept <- SNPRelate::snpgdsLDpruning(
+        pca_gf,
+        ld.threshold = sqrt(0.1),   # r2 < 0.1 -- stringent for PCA
+        slide.max.bp = 500000L,
+        slide.max.n  = -1L,
+        missing.rate = 0.10,
+        method       = "corr",
+        num.thread   = n_cores,
+        verbose      = FALSE
+      )
+      unlist(kept, use.names = FALSE)
+    }, error = function(e) {
+      warning("PCA LD pruning failed, using all SNPs: ", e$message,
+              call. = FALSE)
+      snp_info$SNP
+    })
+
+    .report_progress("    PCA pruned set: ", length(pca_snps), " SNPs",
+                     verbose = verbose)
+
+    pca_res <- tryCatch(
+      SNPRelate::snpgdsPCA(
+        pca_gf,
+        snp.id     = pca_snps,
+        num.thread = n_cores,
+        verbose    = FALSE
+      ),
+      error = function(e) stop("PCA failed: ", e$message, call. = FALSE)
+    )
+
+    # Close temporary GDS if we opened one
+    if (!identical(strategy, "gds")) {
+      .close_gds(pca_gf, key = "pca_tmp")
+      unlink(pca_gds_path)
+    }
+
+    # Align PCs to sample order
+    n_pcs_avail <- min(n_pcs, ncol(pca_res$eigenvect))
+    if (n_pcs_avail < n_pcs)
+      warning("Only ", n_pcs_avail, " PCs available (requested ", n_pcs, ").",
+              call. = FALSE)
+
+    pc_mat <- pca_res$eigenvect[, seq_len(n_pcs_avail), drop = FALSE]
+    rownames(pc_mat) <- pca_res$sample.id
+    colnames(pc_mat) <- paste0("PC", seq_len(n_pcs_avail))
+
+    # Align to sample order used throughout the pipeline
+    pc_mat <- pc_mat[g$sample_ids, , drop = FALSE]
+
+    # Prepend PCs to any existing covariates
+    covariates <- if (is.null(covariates)) {
+      as.data.frame(pc_mat)
+    } else {
+      cbind(as.data.frame(pc_mat), as.data.frame(covariates))
+    }
+
+    .report_progress("    Using PC1-PC", n_pcs_avail,
+                     " as covariates for screening", verbose = verbose)
+  }
 
   # -- Step 4: MAF filter -----------------------------------------------------
   .report_progress("[4] MAF filtering (>= ", maf_threshold, ") ...",

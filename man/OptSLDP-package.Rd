@@ -38,7 +38,12 @@ background markers.
    Chunked reading \tab Genotype files are read in 50 K-row chunks with a pre-allocated matrix; peak RAM equals one chunk rather than twice the file \cr
    Per-chromosome \code{gc()} \tab \code{gc(FALSE)} is called after each chromosome's r^2 matrix is released in pre-pruning and background-pruning loops \cr
    Multi-trait union protection \tab Screening and candidate selection run independently per trait; the union of all per-trait candidate sets drives expansion and protection \cr
-   Covariate-adjusted screening \tab Phenotypes are residualised on covariates once before the SNP scan, equivalent to including covariates in every marginal regression \cr
+   GLM + PCA screening \tab Marginal OLS with PC covariates for population structure correction. False positives add a few extra protected markers (harmless); false negatives permanently lose QTL signal (critical). GLM + PCA avoids over-correction without O(n^3) mixed-model cost \cr
+   Automatic PCA (\code{n_pcs}) \tab Set \code{n_pcs > 0} to compute PCs automatically from a LD-pruned SNP subset via \code{snpgdsPCA()}; no pre-computation required \cr
+   C++ LD and screening kernels \tab \code{r2_subset_cpp()}, \code{above_threshold_subset_cpp()}, \code{greedy_prune_r2_cpp()}, \code{screen_chunk_cpp()} compiled via RcppArmadillo; zero R interpreter overhead; genotype variance cached across traits \cr
+   Chromosome-streaming screening \tab Step 6 extracts and screens 50 k-SNP chunks, accumulating only statistics; peak RAM ~300 MB vs ~4 GB for full extraction \cr
+   Chromosome-streaming output \tab Step 11 writes chromosome by chromosome from GDS; \code{final_geno_mat} is \code{NULL} for GDS runs \cr
+   Parallel background pruning \tab Step 9 FORK workers each hold an independent GDS handle; parent handle closed before cluster, reopened after \cr
 }
 
 }

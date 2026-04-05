@@ -16,6 +16,7 @@ run_sldp(
   sample_col = "Sample",
   trait_col = "Trait1",
   covar_cols = NULL,
+  n_pcs = 0L,
   format = c("auto", "numeric", "hapmap", "vcf"),
   output_format = c("numeric", "hapmap"),
   mode = c("A", "B", "C"),
@@ -69,6 +70,14 @@ run_sldp(
 
   Covariate column name(s) in the phenotype file. Covariates are shared
   across all traits. `NULL` = no covariates.
+
+- n_pcs:
+
+  Number of principal components to compute automatically from the
+  genotype data and use as covariates. Computed via `snpgdsPCA()` from
+  SNPRelate on a LD-pruned SNP subset. Only used when `covar_cols` is
+  `NULL`. Set to `0` (default) to disable. Typical values: 3-5 for
+  structured populations.
 
 - format:
 
@@ -277,18 +286,32 @@ res_hmp <- run_sldp(
   output_format  = "hapmap"     # nucleotide calls: AA/AT/TT/NN
 )
 
-# -- Multi-trait: union protection -------------------------------------------
+# -- Multi-trait with automatic PCA (population structure correction) -------
 res <- run_sldp(
   genotype_file  = geno_file,
   phenotype_file = pheno_file,
   output_file    = tempfile(fileext = ".csv"),
   trait_col      = c("Trait1", "Trait2"),
-  covar_cols     = c("PC1", "PC2"),
+  n_pcs          = 3L,             # auto-compute 3 PCs from genotypes
   mode           = "A",
   pval_threshold = 0.05,
   output_format  = "numeric"
 )
 # Inspect per-trait results
+names(res$screening_stats)          # "Trait1" "Trait2"
+res$candidate_snps_per_trait$Trait1
+
+# -- Multi-trait with user-supplied PCs ------------------------------------
+res <- run_sldp(
+  genotype_file  = geno_file,
+  phenotype_file = pheno_file,
+  output_file    = tempfile(fileext = ".csv"),
+  trait_col      = c("Trait1", "Trait2"),
+  covar_cols     = c("PC1", "PC2"),  # columns already in phenotype file
+  mode           = "A",
+  pval_threshold = 0.05,
+  output_format  = "numeric"
+)
 names(res$screening_stats)          # "Trait1" "Trait2"
 res$candidate_snps_per_trait$Trait1
 } # }

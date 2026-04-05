@@ -81,6 +81,7 @@ handled automatically.</p>
 <span>  sample_col <span class="op">=</span> <span class="st">"Sample"</span>,</span>
 <span>  trait_col <span class="op">=</span> <span class="st">"Trait1"</span>,</span>
 <span>  covar_cols <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  n_pcs <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"numeric"</span>, <span class="st">"hapmap"</span>, <span class="st">"vcf"</span><span class="op">)</span>,</span>
 <span>  output_format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"numeric"</span>, <span class="st">"hapmap"</span><span class="op">)</span>,</span>
 <span>  mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
@@ -136,6 +137,14 @@ character vector for multi-trait analysis.  Default <code>"Trait1"</code>.</p></
 <dt id="arg-covar-cols">covar_cols<a class="anchor" aria-label="anchor" href="#arg-covar-cols"></a></dt>
 <dd><p>Covariate column name(s) in the phenotype file.
 Covariates are shared across all traits.  <code>NULL</code> = no covariates.</p></dd>
+
+
+<dt id="arg-n-pcs">n_pcs<a class="anchor" aria-label="anchor" href="#arg-n-pcs"></a></dt>
+<dd><p>Number of principal components to compute
+automatically from the genotype data and use as covariates. Computed via
+<code>snpgdsPCA()</code> from SNPRelate on a LD-pruned SNP subset. Only used when
+<code>covar_cols</code> is <code>NULL</code>. Set to <code>0</code> (default) to disable. Typical values:
+3-5 for structured populations.</p></dd>
 
 
 <dt id="arg-format">format<a class="anchor" aria-label="anchor" href="#arg-format"></a></dt>
@@ -330,18 +339,32 @@ shared output file.</p>
 <span class="r-in"><span>  output_format  <span class="op">=</span> <span class="st">"hapmap"</span>     <span class="co"># nucleotide calls: AA/AT/TT/NN</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># -- Multi-trait: union protection -------------------------------------------</span></span></span>
+<span class="r-in"><span><span class="co"># -- Multi-trait with automatic PCA (population structure correction) -------</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">run_sldp</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  genotype_file  <span class="op">=</span> <span class="va">geno_file</span>,</span></span>
 <span class="r-in"><span>  phenotype_file <span class="op">=</span> <span class="va">pheno_file</span>,</span></span>
 <span class="r-in"><span>  output_file    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  trait_col      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Trait1"</span>, <span class="st">"Trait2"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  covar_cols     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"PC1"</span>, <span class="st">"PC2"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  n_pcs          <span class="op">=</span> <span class="fl">3L</span>,             <span class="co"># auto-compute 3 PCs from genotypes</span></span></span>
 <span class="r-in"><span>  mode           <span class="op">=</span> <span class="st">"A"</span>,</span></span>
 <span class="r-in"><span>  pval_threshold <span class="op">=</span> <span class="fl">0.05</span>,</span></span>
 <span class="r-in"><span>  output_format  <span class="op">=</span> <span class="st">"numeric"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="co"># Inspect per-trait results</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">screening_stats</span><span class="op">)</span>          <span class="co"># "Trait1" "Trait2"</span></span></span>
+<span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">candidate_snps_per_trait</span><span class="op">$</span><span class="va">Trait1</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># -- Multi-trait with user-supplied PCs ------------------------------------</span></span></span>
+<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">run_sldp</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  genotype_file  <span class="op">=</span> <span class="va">geno_file</span>,</span></span>
+<span class="r-in"><span>  phenotype_file <span class="op">=</span> <span class="va">pheno_file</span>,</span></span>
+<span class="r-in"><span>  output_file    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  trait_col      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Trait1"</span>, <span class="st">"Trait2"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  covar_cols     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"PC1"</span>, <span class="st">"PC2"</span><span class="op">)</span>,  <span class="co"># columns already in phenotype file</span></span></span>
+<span class="r-in"><span>  mode           <span class="op">=</span> <span class="st">"A"</span>,</span></span>
+<span class="r-in"><span>  pval_threshold <span class="op">=</span> <span class="fl">0.05</span>,</span></span>
+<span class="r-in"><span>  output_format  <span class="op">=</span> <span class="st">"numeric"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">screening_stats</span><span class="op">)</span>          <span class="co"># "Trait1" "Trait2"</span></span></span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">candidate_snps_per_trait</span><span class="op">$</span><span class="va">Trait1</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
