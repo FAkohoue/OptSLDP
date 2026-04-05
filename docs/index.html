@@ -611,20 +611,12 @@
 <div class="section level2">
 <h2 id="multi-trait-analysis">Multi-trait analysis<a class="anchor" aria-label="anchor" href="#multi-trait-analysis"></a>
 </h2>
-<p>When <code>trait_col</code> is a character vector of length &gt; 1, the pipeline runs <strong>separate screening for every trait</strong> and then takes the <strong>union</strong> of all per-trait candidate sets before expansion and pruning:</p>
-<ol style="list-style-type: decimal">
-<li>
-<p>For each trait <span class="math inline">\(k\in\{1,\ldots,K\}\)</span>:</p>
-<ul>
-<li>Residualise y_k on the shared covariates independently.</li>
-<li>Run the full marginal scan → per-trait statistics <span class="math inline">\((\hat\beta^{(k)},p^{(k)},R^{2(k)})\)</span>.</li>
-<li>Apply the threshold criteria → per-trait candidate set <span class="math inline">\(\mathcal{C}^{(k)}\)</span>.</li>
-</ul>
-</li>
-<li><p>Form the <strong>union candidate set</strong>: <span class="math display">\[\mathcal{C}^* = \bigcup_{k=1}^{K}\mathcal{C}^{(k)}\]</span></p></li>
-<li><p>Expand <span class="math inline">\(\mathcal{C}^*\)</span> into the protected set <span class="math inline">\(\mathcal{I}^*\)</span> using the window and LD-neighbour rules (§4).</p></li>
-<li><p>Prune the background <span class="math inline">\(\Omega\setminus\mathcal{I}^*\)</span> (§5).</p></li>
-</ol>
+<p>When <code>trait_col</code> is a character vector of length &gt; 1, the pipeline runs <strong>separate screening for every trait</strong> and then takes the <strong>union</strong> of all per-trait candidate sets before expansion and pruning.</p>
+<p><strong>Step 1.</strong> For each trait <span class="math inline">\(k = 1, \ldots, K\)</span>, residualise the phenotype on the shared covariates independently, run the full marginal scan to obtain per-trait statistics, and apply the threshold criteria to obtain a per-trait candidate set.</p>
+<p><strong>Step 2.</strong> Form the <strong>union candidate set</strong>:</p>
+<p><span class="math display">\[\mathcal{C}^* = \bigcup_{k=1}^{K}\mathcal{C}^{(k)}\]</span></p>
+<p><strong>Step 3.</strong> Expand <span class="math inline">\(\mathcal{C}^*\)</span> into the protected set <span class="math inline">\(\mathcal{I}^*\)</span> using the positional window and LD-neighbour rules (§4).</p>
+<p><strong>Step 4.</strong> Prune the background <span class="math inline">\(\Omega \setminus \mathcal{I}^*\)</span> (§5).</p>
 <p>This guarantees that <strong>every SNP important for any trait is retained</strong>, while background pruning is performed once on the shared remaining set.</p>
 <p>The return value in multi-trait mode includes: - <code>$screening_stats</code> — a <strong>named list</strong> of per-trait <code>data.table</code>s. - <code>$candidate_snps_per_trait</code> — a named list of per-trait candidate vectors. - <code>$candidate_snps</code> — the union across all traits.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">

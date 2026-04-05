@@ -454,23 +454,23 @@ that function operates on the correlation coefficient rather than r^2.
 
 When `trait_col` is a character vector of length \> 1, the pipeline runs
 **separate screening for every trait** and then takes the **union** of
-all per-trait candidate sets before expansion and pruning:
+all per-trait candidate sets before expansion and pruning.
 
-1.  For each trait \\k\in\\1,\ldots,K\\\\:
+**Step 1.** For each trait \\k = 1, \ldots, K\\, residualise the
+phenotype on the shared covariates independently, run the full marginal
+scan to obtain per-trait statistics, and apply the threshold criteria to
+obtain a per-trait candidate set.
 
-    - Residualise y_k on the shared covariates independently.
-    - Run the full marginal scan → per-trait statistics
-      \\(\hat\beta^{(k)},p^{(k)},R^{2(k)})\\.
-    - Apply the threshold criteria → per-trait candidate set
-      \\\mathcal{C}^{(k)}\\.
+**Step 2.** Form the **union candidate set**:
 
-2.  Form the **union candidate set**: \\\mathcal{C}^\* =
-    \bigcup\_{k=1}^{K}\mathcal{C}^{(k)}\\
+\\\mathcal{C}^\* = \bigcup\_{k=1}^{K}\mathcal{C}^{(k)}\\
 
-3.  Expand \\\mathcal{C}^\*\\ into the protected set \\\mathcal{I}^\*\\
-    using the window and LD-neighbour rules (§4).
+**Step 3.** Expand \\\mathcal{C}^\*\\ into the protected set
+\\\mathcal{I}^\*\\ using the positional window and LD-neighbour rules
+(§4).
 
-4.  Prune the background \\\Omega\setminus\mathcal{I}^\*\\ (§5).
+**Step 4.** Prune the background \\\Omega \setminus \mathcal{I}^\*\\
+(§5).
 
 This guarantees that **every SNP important for any trait is retained**,
 while background pruning is performed once on the shared remaining set.
