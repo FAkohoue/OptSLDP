@@ -10,12 +10,6 @@ concurrency:
   group: "check-${{ github.ref }}"
   cancel-in-progress: true
 
-env:
-  R_KEEP_PKG_SOURCE: "yes"
-  _R_CHECK_CRAN_INCOMING_REMOTE_: "false"
-  _R_CHECK_FORCE_SUGGESTS_: "false"
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
@@ -30,17 +24,22 @@ jobs:
           - { os: macos-latest,   r: "release" }
           - { os: windows-latest, r: "release" }
 
+    env:
+      R_KEEP_PKG_SOURCE: "yes"
+      _R_CHECK_CRAN_INCOMING_REMOTE_: "false"
+      _R_CHECK_FORCE_SUGGESTS_: "false"
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Install Pandoc
-        uses: r-lib/actions/setup-pandoc@v3
+        uses: r-lib/actions/setup-pandoc@v2
         with:
           pandoc-version: "3.1.11"
 
       - name: Install R ${{ matrix.config.r }}
-        uses: r-lib/actions/setup-r@v3
+        uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
@@ -79,6 +78,8 @@ jobs:
           if (length(missing_pkgs) > 0L)
             BiocManager::install(missing_pkgs, ask = FALSE, update = FALSE)
 
+      # Linux: install directly without pak to avoid lockfile conflicts
+      # with pre-installed Bioconductor packages
       - name: Install CRAN dependencies (Linux)
         if: runner.os == 'Linux'
         shell: Rscript {0}
@@ -91,9 +92,10 @@ jobs:
           install.packages(".", repos = NULL, type = "source",
                            INSTALL_opts = "--no-docs --no-multiarch --no-build-vignettes")
 
+      # macOS and Windows: use setup-r-dependencies (no Bioc conflict)
       - name: Install CRAN dependencies (macOS/Windows)
         if: runner.os != 'Linux'
-        uses: r-lib/actions/setup-r-dependencies@v3
+        uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
             any::rcmdcheck
@@ -113,7 +115,7 @@ jobs:
 
       - name: Run R CMD check (macOS/Windows)
         if: runner.os != 'Linux'
-        uses: r-lib/actions/check-r-package@v3
+        uses: r-lib/actions/check-r-package@v2
         with:
           args: 'c("--as-cran", "--no-manual")'
           error-on: '"error"'
