@@ -279,8 +279,7 @@ allele frequency is:
 
 $$\text{MAF}_i = \min\!\left(\text{AF}_i,\;1-\text{AF}_i\right)$$
 
-SNPs with $\text{MAF}_i < \tau_{\text{maf}}$ (default 0.05) are removed before
-any further analysis.
+SNPs with MAF_i < tau_maf (default 0.05) are removed before any further analysis.
 
 ### 2. Marginal SNP screening (GLM + PCA)
 
