@@ -369,7 +369,51 @@ automatically from the file extension.</p>
 <h4 id="numeric-dosage-csv-txt">Numeric dosage (CSV / TXT)<a class="anchor" aria-label="anchor" href="#numeric-dosage-csv-txt"></a>
 </h4>
 <p>The standard format has columns <code>SNP, CHR, POS, REF, ALT</code>
-followed by one column per sample. Values must be in <span class="math inline">\(\{0, 1, 2, \text{NA}\}\)</span>.</p>
+followed by one column per sample. Values must be in <span class="math inline">\(\{0, 1, 2, \text{NA}\}\)</span>:</p>
+<table class="table">
+<thead><tr class="header">
+<th>SNP</th>
+<th>CHR</th>
+<th>POS</th>
+<th>REF</th>
+<th>ALT</th>
+<th>Line01</th>
+<th>Line02</th>
+<th>…</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>SNP001</td>
+<td>1</td>
+<td>10000</td>
+<td>A</td>
+<td>T</td>
+<td>0</td>
+<td>1</td>
+<td>…</td>
+</tr>
+<tr class="even">
+<td>SNP002</td>
+<td>1</td>
+<td>20000</td>
+<td>G</td>
+<td>C</td>
+<td>2</td>
+<td>0</td>
+<td>…</td>
+</tr>
+<tr class="odd">
+<td>SNP003</td>
+<td>1</td>
+<td>30000</td>
+<td>C</td>
+<td>G</td>
+<td>1</td>
+<td>2</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">geno_obj</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_numeric_genotype.html">read_numeric_genotype</a></span><span class="op">(</span><span class="va">geno_file</span><span class="op">)</span></span>
 <span></span>
@@ -448,7 +492,72 @@ next.</li>
 <p>HapMap nucleotide calls (<code>"AA"</code>, <code>"AT"</code>,
 <code>"TT"</code>, <code>"NN"</code>) are converted to additive dosage
 (0/1/2/NA) relative to the REF allele inferred from the
-<code>alleles</code> column.</p>
+<code>alleles</code> column. The format has 11 metadata columns followed
+by sample columns:</p>
+<table class="table">
+<colgroup>
+<col width="7%">
+<col width="14%">
+<col width="10%">
+<col width="7%">
+<col width="12%">
+<col width="4%">
+<col width="12%">
+<col width="12%">
+<col width="12%">
+<col width="4%">
+</colgroup>
+<thead><tr class="header">
+<th>rs#</th>
+<th>alleles</th>
+<th>chrom</th>
+<th>pos</th>
+<th>strand</th>
+<th>…</th>
+<th>QCcode</th>
+<th>Line01</th>
+<th>Line02</th>
+<th>…</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>SNP001</td>
+<td>A/T</td>
+<td>1</td>
+<td>10000</td>
+<td>+</td>
+<td>…</td>
+<td>NA</td>
+<td>AA</td>
+<td>AT</td>
+<td>…</td>
+</tr>
+<tr class="even">
+<td>SNP002</td>
+<td>G/C</td>
+<td>1</td>
+<td>20000</td>
+<td>+</td>
+<td>…</td>
+<td>NA</td>
+<td>CC</td>
+<td>GG</td>
+<td>…</td>
+</tr>
+<tr class="odd">
+<td>SNP003</td>
+<td>C/G</td>
+<td>1</td>
+<td>30000</td>
+<td>+</td>
+<td>…</td>
+<td>NA</td>
+<td>CG</td>
+<td>GG</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level4">
 <h4 id="vcf-format">VCF format<a class="anchor" aria-label="anchor" href="#vcf-format"></a>
@@ -466,7 +575,81 @@ next.</li>
 <p>Both phased (<code>0|1</code>) and unphased (<code>0/1</code>) GT
 fields are accepted. The first 10 SNPs in the example VCF use phased
 notation; the remainder use unphased — this exercises both parsing
-branches. Multi-allelic sites use the first ALT allele.</p>
+branches. Multi-allelic sites use the first ALT allele:</p>
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="10%">
+<col width="6%">
+<col width="5%">
+<col width="6%">
+<col width="6%">
+<col width="8%">
+<col width="10%">
+<col width="8%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="4%">
+</colgroup>
+<thead><tr class="header">
+<th>#CHROM</th>
+<th>POS</th>
+<th>ID</th>
+<th>REF</th>
+<th>ALT</th>
+<th>QUAL</th>
+<th>FILTER</th>
+<th>INFO</th>
+<th>FORMAT</th>
+<th>Line01</th>
+<th>Line02</th>
+<th>…</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>10000</td>
+<td>SNP001</td>
+<td>A</td>
+<td>T</td>
+<td>.</td>
+<td>PASS</td>
+<td>.</td>
+<td>GT</td>
+<td>0/0</td>
+<td>0/1</td>
+<td>…</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>20000</td>
+<td>SNP002</td>
+<td>G</td>
+<td>C</td>
+<td>.</td>
+<td>PASS</td>
+<td>.</td>
+<td>GT</td>
+<td>1/1</td>
+<td>0/0</td>
+<td>…</td>
+</tr>
+<tr class="odd">
+<td>1</td>
+<td>30000</td>
+<td>SNP003</td>
+<td>C</td>
+<td>G</td>
+<td>.</td>
+<td>PASS</td>
+<td>.</td>
+<td>GT</td>
+<td>0/1</td>
+<td>1/1</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level4">
 <h4 id="automatic-format-dispatch">Automatic format dispatch<a class="anchor" aria-label="anchor" href="#automatic-format-dispatch"></a>

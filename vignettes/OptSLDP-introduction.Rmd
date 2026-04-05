@@ -174,7 +174,13 @@ the file extension.
 ### Numeric dosage (CSV / TXT)
 
 The standard format has columns `SNP, CHR, POS, REF, ALT` followed by one
-column per sample. Values must be in $\{0, 1, 2, \text{NA}\}$.
+column per sample. Values must be in $\{0, 1, 2, \text{NA}\}$:
+
+| SNP | CHR | POS | REF | ALT | Line01 | Line02 | … |
+|-----|-----|-----|-----|-----|--------|--------|---|
+| SNP001 | 1 | 10000 | A | T | 0 | 1 | … |
+| SNP002 | 1 | 20000 | G | C | 2 | 0 | … |
+| SNP003 | 1 | 30000 | C | G | 1 | 2 | … |
 
 ```{r read_numeric}
 geno_obj <- read_numeric_genotype(geno_file)
@@ -221,7 +227,13 @@ head(hmp_obj$snp_info)
 
 HapMap nucleotide calls (`"AA"`, `"AT"`, `"TT"`, `"NN"`) are converted to
 additive dosage (0/1/2/NA) relative to the REF allele inferred from the
-`alleles` column.
+`alleles` column. The format has 11 metadata columns followed by sample columns:
+
+| rs# | alleles | chrom | pos | strand | … | QCcode | Line01 | Line02 | … |
+|-----|---------|-------|-----|--------|---|--------|--------|--------|---|
+| SNP001 | A/T | 1 | 10000 | + | … | NA | AA | AT | … |
+| SNP002 | G/C | 1 | 20000 | + | … | NA | CC | GG | … |
+| SNP003 | C/G | 1 | 30000 | + | … | NA | CG | GG | … |
 
 ### VCF format
 
@@ -232,7 +244,14 @@ str(vcf_obj, max.level = 1)
 
 Both phased (`0|1`) and unphased (`0/1`) GT fields are accepted. The first 10
 SNPs in the example VCF use phased notation; the remainder use unphased — this
-exercises both parsing branches. Multi-allelic sites use the first ALT allele.
+exercises both parsing branches. Multi-allelic sites use the first ALT allele:
+
+| #CHROM | POS | ID | REF | ALT | QUAL | FILTER | INFO | FORMAT | Line01 | Line02 | … |
+|--------|-----|----|-----|-----|------|--------|------|--------|--------|--------|---|
+| 1 | 10000 | SNP001 | A | T | . | PASS | . | GT | 0/0 | 0/1 | … |
+| 1 | 20000 | SNP002 | G | C | . | PASS | . | GT | 1/1 | 0/0 | … |
+| 1 | 30000 | SNP003 | C | G | . | PASS | . | GT | 0/1 | 1/1 | … |
+
 
 ### Automatic format dispatch
 

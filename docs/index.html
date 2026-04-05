@@ -88,10 +88,13 @@
 </h1>
 </div>
 <p align="center">
-<img src="reference/figures/logo.png" alt="OptSLDP logo" width="120px"></p>
+<img src="reference/figures/logo.png" alt="OptSLDP logo" width="180px"></p>
 <!-- badges: start -->
 
-<p><code>OptSLDP</code> is an <strong>optimized and extended</strong> implementation of Selective Linkage Disequilibrium Pruning for genomic prediction panel construction. The core idea of SLDP — preserving all markers in strong LD with statistically important SNPs so that genomic models retain the full genetic signal around each QTL, while pruning redundant background markers — is retained from the original algorithm of Zhu et al. (2023). OptSLDP improves on that foundation in four concrete ways:</p>
+<div class="section level2">
+<h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
+</h2>
+<p><code>OptSLDP</code> is an <strong>optimized and extended</strong> implementation of Selective Linkage Disequilibrium Pruning for genomic prediction panel construction. The core idea of SLDP — preserving all markers in strong LD with statistically important SNPs so that genomic models retain the full genetic signal around each QTL, while pruning redundant background markers — is retained from the original algorithm of Zhu et al. (2023). OptSLDP improves on that foundation in 12 concrete ways:</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Memory-safe chunked reading</strong> — genotype files are read in fixed-size row chunks with a pre-allocated output matrix, so peak RAM is proportional to one chunk rather than twice the full file.</li>
@@ -120,6 +123,7 @@
 </ol>
 <p>OptSLDP is also inspired by the genome-wide association study-derived marker weighting approach of Akohoue et al. (2026) for blast resistance prediction in rice, and scales automatically from small in-memory panels to whole-genome sequencing datasets with more than 10 million SNPs.</p>
 <hr>
+</div>
 <div class="section level2">
 <h2 id="table-of-contents">Table of contents<a class="anchor" aria-label="anchor" href="#table-of-contents"></a>
 </h2>
@@ -266,12 +270,181 @@
 </tr>
 </tbody>
 </table>
-<p><strong>Numeric dosage format</strong> — one row per SNP, columns <code>SNP, CHR, POS, REF, ALT</code> followed by one column per sample, values in {0, 1, 2, NA}:</p>
-<pre><code>SNP,CHR,POS,REF,ALT,Line01,Line02,...
-SNP001,1,10000,A,T,0,1,...
-SNP002,1,20000,G,C,2,0,...</code></pre>
-<p><strong>HapMap format</strong> — standard 11-column header (<code>rs#, alleles, chrom, pos, strand, assembly#, center, protLSID, assayLSID, panelLSID, QCcode</code>) followed by sample columns containing two-character nucleotide calls (<code>AA</code>, <code>AT</code>, <code>TT</code>, <code>NN</code> for missing).</p>
-<p><strong>VCF</strong> — standard VCF v4.2. Both phased (<code>0|1</code>) and unphased (<code>0/1</code>) GT fields are accepted. Multi-allelic sites use the first ALT allele. Missing calls (<code>./.</code>) become <code>NA</code>.</p>
+<p><strong>Numeric dosage format</strong> — one row per SNP, columns <code>SNP, CHR, POS, REF, ALT</code> followed by one column per sample, values in <code>{0, 1, 2, NA}</code>:</p>
+<table class="table">
+<thead><tr>
+<th>SNP</th>
+<th>CHR</th>
+<th>POS</th>
+<th>REF</th>
+<th>ALT</th>
+<th>Line01</th>
+<th>Line02</th>
+<th>…</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>SNP001</td>
+<td>1</td>
+<td>10000</td>
+<td>A</td>
+<td>T</td>
+<td>0</td>
+<td>1</td>
+<td>…</td>
+</tr>
+<tr>
+<td>SNP002</td>
+<td>1</td>
+<td>20000</td>
+<td>G</td>
+<td>C</td>
+<td>2</td>
+<td>0</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
+<p><strong>HapMap format</strong> — standard 11-column header (<code>rs#, alleles, chrom, pos, strand, assembly#, center, protLSID, assayLSID, panelLSID, QCcode</code>) followed by sample columns containing two-character nucleotide calls (<code>AA</code>, <code>AT</code>, <code>TT</code>, <code>NN</code> for missing):</p>
+<table class="table">
+<colgroup>
+<col width="7%">
+<col width="14%">
+<col width="10%">
+<col width="7%">
+<col width="12%">
+<col width="4%">
+<col width="12%">
+<col width="12%">
+<col width="12%">
+<col width="4%">
+</colgroup>
+<thead><tr>
+<th>rs#</th>
+<th>alleles</th>
+<th>chrom</th>
+<th>pos</th>
+<th>strand</th>
+<th>…</th>
+<th>QCcode</th>
+<th>Line01</th>
+<th>Line02</th>
+<th>…</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>SNP001</td>
+<td>A/T</td>
+<td>1</td>
+<td>10000</td>
+<td>+</td>
+<td>…</td>
+<td>NA</td>
+<td>AA</td>
+<td>AT</td>
+<td>…</td>
+</tr>
+<tr>
+<td>SNP002</td>
+<td>G/C</td>
+<td>1</td>
+<td>20000</td>
+<td>+</td>
+<td>…</td>
+<td>NA</td>
+<td>CC</td>
+<td>GG</td>
+<td>…</td>
+</tr>
+<tr>
+<td>SNP003</td>
+<td>C/G</td>
+<td>1</td>
+<td>30000</td>
+<td>+</td>
+<td>…</td>
+<td>NA</td>
+<td>CG</td>
+<td>GG</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
+<p><strong>VCF</strong> — standard VCF v4.2. Both phased (<code>0|1</code>) and unphased (<code>0/1</code>) GT fields are accepted. Multi-allelic sites use the first ALT allele. Missing calls (<code>./.</code>) become <code>NA</code>:</p>
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="10%">
+<col width="6%">
+<col width="5%">
+<col width="6%">
+<col width="6%">
+<col width="8%">
+<col width="10%">
+<col width="8%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="4%">
+</colgroup>
+<thead><tr>
+<th>#CHROM</th>
+<th>POS</th>
+<th>ID</th>
+<th>REF</th>
+<th>ALT</th>
+<th>QUAL</th>
+<th>FILTER</th>
+<th>INFO</th>
+<th>FORMAT</th>
+<th>Line01</th>
+<th>Line02</th>
+<th>…</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>10000</td>
+<td>SNP001</td>
+<td>A</td>
+<td>T</td>
+<td>.</td>
+<td>PASS</td>
+<td>.</td>
+<td>GT</td>
+<td>0/0</td>
+<td>0/1</td>
+<td>…</td>
+</tr>
+<tr>
+<td>1</td>
+<td>20000</td>
+<td>SNP002</td>
+<td>G</td>
+<td>C</td>
+<td>.</td>
+<td>PASS</td>
+<td>.</td>
+<td>GT</td>
+<td>1/1</td>
+<td>0/0</td>
+<td>…</td>
+</tr>
+<tr>
+<td>1</td>
+<td>30000</td>
+<td>SNP003</td>
+<td>C</td>
+<td>G</td>
+<td>.</td>
+<td>PASS</td>
+<td>.</td>
+<td>GT</td>
+<td>0/1</td>
+<td>1/1</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
 <p>Chromosome names with and without the <code>chr</code> prefix (<code>chr1</code> vs <code>1</code>) are normalised automatically at read time.</p>
 </div>
 <div class="section level3">
@@ -309,9 +482,38 @@ SNP002,1,20000,G,C,2,0,...</code></pre>
 </tr>
 </tbody>
 </table>
-<pre><code>Sample,Trait1,Trait2,PC1,PC2
-Line01,1.198,-0.319,0.807,-0.505
-Line02,1.881, 0.151,-0.492, 0.167</code></pre>
+<table class="table">
+<thead><tr>
+<th>Sample</th>
+<th>Trait1</th>
+<th>Trait2</th>
+<th>PC1</th>
+<th>PC2</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Line01</td>
+<td>1.198</td>
+<td>−0.319</td>
+<td>0.807</td>
+<td>−0.505</td>
+</tr>
+<tr>
+<td>Line02</td>
+<td>1.881</td>
+<td>0.151</td>
+<td>−0.492</td>
+<td>0.167</td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
 <p>Sample alignment is handled internally. Samples present in the genotype file but absent from the phenotype file cause an informative error. Extra samples in the phenotype file are dropped with a message.</p>
 <hr>
 </div>
@@ -323,17 +525,17 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <h3 id="id_1-maf-filtering">1. MAF filtering<a class="anchor" aria-label="anchor" href="#id_1-maf-filtering"></a>
 </h3>
 <p>The ALT allele frequency is estimated from the dosage matrix as:</p>
-<p><span class="math display">\[\text{AF}_i = \frac{\sum_j g_{ij}}{2 n_j}\]</span></p>
-<p>where <span class="math inline">\(g_{ij} \in \{0, 1, 2, \text{NA}\}\)</span> is the dosage for SNP <span class="math inline">\(i\)</span> in sample <span class="math inline">\(j\)</span>, and <span class="math inline">\(n_j\)</span> is the number of non-missing samples for that SNP. The minor allele frequency is:</p>
-<p><span class="math display">\[\text{MAF}_i = \min\!\left(\text{AF}_i,\; 1 - \text{AF}_i\right)\]</span></p>
+<p><span class="math display">\[\text{AF}_i = \frac{\sum_j g_{ij}}{2\,n_j}\]</span></p>
+<p>where <span class="math inline">\(g_{ij}\in\{0,1,2,\text{NA}\}\)</span> is the dosage for SNP <span class="math inline">\(i\)</span> in sample <span class="math inline">\(j\)</span>, and <span class="math inline">\(n_j\)</span> is the number of non-missing samples for that SNP. The minor allele frequency is:</p>
+<p><span class="math display">\[\text{MAF}_i = \min\!\left(\text{AF}_i,\;1-\text{AF}_i\right)\]</span></p>
 <p>SNPs with <span class="math inline">\(\text{MAF}_i &lt; \tau_{\text{maf}}\)</span> (default 0.05) are removed before any further analysis.</p>
 </div>
 <div class="section level3">
 <h3 id="id_2-marginal-snp-screening-glm--pca">2. Marginal SNP screening (GLM + PCA)<a class="anchor" aria-label="anchor" href="#id_2-marginal-snp-screening-glm--pca"></a>
 </h3>
 <p>OptSLDP uses a <strong>Generalised Linear Model (GLM) with principal component covariates</strong> for marker screening. For each SNP <span class="math inline">\(i\)</span> a marginal linear regression is fitted:</p>
-<p><span class="math display">\[y^* = \alpha + \beta_i\, g_i + \varepsilon\]</span></p>
-<p>where <span class="math inline">\(y^*\)</span> is the phenotype pre-adjusted for population structure (see below), <span class="math inline">\(g_i\)</span> is the dosage vector for SNP <span class="math inline">\(i\)</span>, and <span class="math inline">\(\varepsilon \sim \mathcal{N}(0, \sigma^2 I)\)</span>.</p>
+<p><span class="math display">\[y^* = \alpha + \beta_i\,g_i + \varepsilon\]</span></p>
+<p>where y* is the phenotype pre-adjusted for population structure (see below), g_i is the dosage vector for SNP <span class="math inline">\(i\)</span>, and <span class="math inline">\(\varepsilon \sim \mathcal{N}(0,\sigma^2 I)\)</span>.</p>
 <p><strong>Why GLM + PCA is the right choice for panel construction.</strong> The goal of the screening step in SLDP is not to produce a publication-quality GWAS — it is to identify which genomic regions carry relevant biological signal so that all markers in those regions can be protected from pruning. This distinction has important practical consequences:</p>
 <ul>
 <li>
@@ -345,7 +547,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 </ul>
 <p>Mixed model approaches (EMMA, EMMAX, GCTA-MLMA) are more powerful for fine-mapping but add O(n^3) computational cost and are unnecessary for the panel construction objective. For datasets with strong population structure and clear subgroups, increasing <code>n_pcs</code> from 3 to 5 is usually sufficient.</p>
 <p><strong>Population structure correction.</strong> When <code>n_pcs &gt; 0</code> (or <code>covar_cols</code> is supplied), <span class="math inline">\(y\)</span> is first projected onto the covariate space and the residuals are used as the working phenotype:</p>
-<p><span class="math display">\[y^* = y - X_c\!\left(X_c^\top X_c\right)^{-1} X_c^\top y = M_{X_c}\, y\]</span></p>
+<p><span class="math display">\[y^* = y - X_c\!\left(X_c^\top X_c\right)^{-1}X_c^\top y = M_{X_c}\,y\]</span></p>
 <p>where <span class="math inline">\(M_{X_c}\)</span> is the annihilator matrix and <span class="math inline">\(X_c\)</span> contains the PC scores. This is equivalent to fitting <span class="math inline">\(y \sim \text{PC1} + \text{PC2} + \cdots + g_i\)</span> for every SNP but residualisation is performed once before the SNP loop, giving an <span class="math inline">\(O(n_c)\)</span> saving over re-fitting covariates <span class="math inline">\(p\)</span> times.</p>
 <p>When <code>n_pcs &gt; 0</code> and <code>covar_cols = NULL</code>, PCs are computed automatically from a LD-pruned SNP subset via <code>snpgdsPCA()</code>. The user only specifies how many PCs to include. Typical values: 3 for mildly structured populations, 5 for panels with clear subgroup separation.</p>
 <p><strong>Reported statistics per SNP:</strong></p>
@@ -392,34 +594,34 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 </h3>
 <p>Three modes control which SNPs enter the protected set:</p>
 <p><strong>Mode A — p-value threshold</strong></p>
-<p><span class="math display">\[\mathcal{C}_A = \{i : p_i \le \tau_p\}\]</span></p>
+<p><span class="math display">\[\mathcal{C}_A = \{\,i : p_i \le \tau_p\,\}\]</span></p>
 <p>Requires <code>pval_threshold</code>. Appropriate when a clear significance cutoff exists (e.g., Bonferroni or a permutation threshold).</p>
 <p><strong>Mode B — effect-size criteria</strong></p>
-<p><span class="math display">\[\mathcal{C}_B = \{i : |z_i| \ge \tau_z \;\text{[AND/OR]}\; R^2_i \ge \tau_{\text{pve}}\}\]</span></p>
+<p><span class="math display">\[\mathcal{C}_B = \{\,i : |z_i| \ge \tau_z \;[\text{AND/OR}]\; R^2_i \ge \tau_{\text{pve}}\,\}\]</span></p>
 <p>Requires at least one of <code>z_threshold</code> or <code>pve_threshold</code>. The <code>threshold_logic</code> argument (<code>"AND"</code> or <code>"OR"</code>) controls how multiple criteria are combined. Use <code>"OR"</code> to capture SNPs with large effects regardless of significance, or <code>"AND"</code> to require both criteria simultaneously.</p>
 <p><strong>Mode C — hybrid</strong></p>
-<p><span class="math display">\[\mathcal{C}_C = \{i : p_i \le \tau_p \;\text{[AND/OR]}\; |z_i| \ge \tau_z \;\text{[AND/OR]}\; R^2_i \ge \tau_{\text{pve}}\}\]</span></p>
+<p><span class="math display">\[\mathcal{C}_C = \{\,i : p_i \le \tau_p \;[\text{AND/OR}]\; |z_i| \ge \tau_z \;[\text{AND/OR}]\; R^2_i \ge \tau_{\text{pve}}\,\}\]</span></p>
 <p>Any combination of the three criteria, combined by <code>threshold_logic</code>.</p>
 </div>
 <div class="section level3">
 <h3 id="id_4-important-snp-expansion">4. Important SNP expansion<a class="anchor" aria-label="anchor" href="#id_4-important-snp-expansion"></a>
 </h3>
-<p>The candidate set <span class="math inline">\(\mathcal{C}\)</span> is expanded into the full <strong>protected set</strong> <span class="math inline">\(\mathcal{I}\)</span> in two layers for each candidate <span class="math inline">\(c\)</span>:</p>
-<p><strong>Layer 1 — positional window.</strong> Every SNP on the same chromosome within <span class="math inline">\(\pm w\)</span> bp of <span class="math inline">\(c\)</span> is added:</p>
-<p><span class="math display">\[\mathcal{W}(c) = \{i : \text{chr}(i) = \text{chr}(c),\; |\text{pos}(i) - \text{pos}(c)| \le w\}\]</span></p>
+<p>The candidate set C is expanded into the full <strong>protected set</strong> I in two layers for each candidate c:</p>
+<p><strong>Layer 1 — positional window.</strong> Every SNP on the same chromosome within <span class="math inline">\(\pm w\)</span> bp of c is added:</p>
+<p><span class="math display">\[\mathcal{W}(c) = \{\,i : \text{chr}(i)=\text{chr}(c),\;|\text{pos}(i)-\text{pos}(c)|\le w\,\}\]</span></p>
 <p>where <span class="math inline">\(w = w_{\text{kb}} \times 1000\)</span> bp (default <span class="math inline">\(w_{\text{kb}} = 50\)</span>, so <span class="math inline">\(w = 50\,000\)</span> bp on each side).</p>
-<p><strong>Layer 2 — LD neighbours (optional).</strong> Among the window SNPs <span class="math inline">\(\mathcal{W}(c)\)</span>, those with pairwise <span class="math inline">\(r^2\)</span> against the focal candidate <span class="math inline">\(c\)</span> at or above <span class="math inline">\(\tau_{\text{flag}}\)</span> (default 0.90) are also added:</p>
-<p><span class="math display">\[\mathcal{L}(c) = \{i \in \mathcal{W}(c) : r^2(i, c) \ge \tau_{\text{flag}}\}\]</span></p>
+<p><strong>Layer 2 — LD neighbours (optional).</strong> Among the window SNPs W(c), those with pairwise r² against the focal candidate c at or above <span class="math inline">\(\tau_{\text{flag}}\)</span> (default 0.90) are also added:</p>
+<p><span class="math display">\[\mathcal{L}(c) = \{\,i \in \mathcal{W}(c) : r^2(i,c) \ge \tau_{\text{flag}}\,\}\]</span></p>
 <p>The full protected set is the union over all candidates:</p>
-<p><span class="math display">\[\mathcal{I} = \bigcup_{c \in \mathcal{C}} [\mathcal{W}(c) \cup \mathcal{L}(c)]\]</span></p>
-<p>The <span class="math inline">\(r^2\)</span> statistic used here is the squared Pearson correlation computed from the dosage matrix with pairwise-complete observations:</p>
-<p><span class="math display">\[r^2(i, j) = \left[\frac{\text{Cov}(g_i, g_j)}{\sqrt{\text{Var}(g_i)\,\text{Var}(g_j)}}\right]^2\]</span></p>
+<p><span class="math display">\[\mathcal{I} = \bigcup_{c\,\in\,\mathcal{C}}\left[\mathcal{W}(c)\cup\mathcal{L}(c)\right]\]</span></p>
+<p>The r² statistic used here is the squared Pearson correlation computed from the dosage matrix with pairwise-complete observations:</p>
+<p><span class="math display">\[r^2(i,j) = \left[\frac{\text{Cov}(g_i,g_j)}{\sqrt{\text{Var}(g_i)\,\text{Var}(g_j)}}\right]^2\]</span></p>
 <p>For the GDS strategy the correlation is computed by <code>snpgdsLDMat()</code> from the SNPRelate package, which streams genotypes from disk and returns the same statistic.</p>
 </div>
 <div class="section level3">
 <h3 id="id_5-background-ld-pruning">5. Background LD pruning<a class="anchor" aria-label="anchor" href="#id_5-background-ld-pruning"></a>
 </h3>
-<p>All SNPs outside <span class="math inline">\(\mathcal{I}\)</span> form the <strong>background set</strong> <span class="math inline">\(\mathcal{B} = \Omega \setminus \mathcal{I}\)</span> where <span class="math inline">\(\Omega\)</span> is the full post-filter SNP set. A greedy forward-selection algorithm is applied chromosome-by-chromosome, processing SNPs in genomic position order:</p>
+<p>All SNPs outside I form the <strong>background set</strong> <span class="math inline">\(\mathcal{B}=\Omega\setminus\mathcal{I}\)</span> where <span class="math inline">\(\Omega\)</span> is the full post-filter SNP set. A greedy forward-selection algorithm is applied chromosome-by-chromosome, processing SNPs in genomic position order:</p>
 <pre><code>For each chromosome:
   Sort background SNPs by position
   For i = 1, 2, …, |B_chr|:
@@ -427,8 +629,8 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
       Mark as "discard" every SNP j &gt; i with r²(i, j) ≥ τ_genome</code></pre>
 <p>The default genome-wide pruning threshold is <span class="math inline">\(\tau_{\text{genome}} = 0.80\)</span>.</p>
 <p>The final retained panel is:</p>
-<p><span class="math display">\[\text{Panel} = \mathcal{I} \;\cup\; \text{retained}(\mathcal{B})\]</span></p>
-<p>For the GDS strategy the background pruning uses <code>snpgdsPruneLD()</code> from SNPRelate, which processes the chromosome in streaming blocks without loading the full <span class="math inline">\(r^2\)</span> matrix. The equivalent threshold passed to <code>snpgdsPruneLD</code> is |r| &gt;= sqrt(r2_genome) because that function operates on the correlation coefficient rather than r^2.</p>
+<p><span class="math display">\[\text{Panel} = \mathcal{I}\;\cup\;\text{retained}(\mathcal{B})\]</span></p>
+<p>For the GDS strategy the background pruning uses <code>snpgdsPruneLD()</code> from SNPRelate, which processes the chromosome in streaming blocks without loading the full r² matrix. The equivalent threshold passed to <code>snpgdsPruneLD</code> is <span class="math inline">\(|r| \ge \sqrt{\tau_{\text{genome}}}\)</span> because that function operates on the correlation coefficient rather than r^2.</p>
 <hr>
 </div>
 </div>
@@ -438,20 +640,20 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <p>When <code>trait_col</code> is a character vector of length &gt; 1, the pipeline runs <strong>separate screening for every trait</strong> and then takes the <strong>union</strong> of all per-trait candidate sets before expansion and pruning:</p>
 <ol style="list-style-type: decimal">
 <li>
-<p>For each trait <span class="math inline">\(k \in \{1, \ldots, K\}\)</span>:</p>
+<p>For each trait <span class="math inline">\(k\in\{1,\ldots,K\}\)</span>:</p>
 <ul>
-<li>Residualise <span class="math inline">\(y_k\)</span> on the shared covariates independently.</li>
-<li>Run the full marginal scan → per-trait statistics <span class="math inline">\((\hat\beta^{(k)}, p^{(k)}, R^{2(k)})\)</span>.</li>
+<li>Residualise y_k on the shared covariates independently.</li>
+<li>Run the full marginal scan → per-trait statistics <span class="math inline">\((\hat\beta^{(k)},p^{(k)},R^{2(k)})\)</span>.</li>
 <li>Apply the threshold criteria → per-trait candidate set <span class="math inline">\(\mathcal{C}^{(k)}\)</span>.</li>
 </ul>
 </li>
-<li><p>Form the <strong>union candidate set</strong>: <span class="math display">\[\mathcal{C}^* = \bigcup_{k=1}^{K} \mathcal{C}^{(k)}\]</span></p></li>
+<li><p>Form the <strong>union candidate set</strong>: <span class="math display">\[\mathcal{C}^* = \bigcup_{k=1}^{K}\mathcal{C}^{(k)}\]</span></p></li>
 <li><p>Expand <span class="math inline">\(\mathcal{C}^*\)</span> into the protected set <span class="math inline">\(\mathcal{I}^*\)</span> using the window and LD-neighbour rules (§4).</p></li>
-<li><p>Prune the background <span class="math inline">\(\Omega \setminus \mathcal{I}^*\)</span> (§5).</p></li>
+<li><p>Prune the background <span class="math inline">\(\Omega\setminus\mathcal{I}^*\)</span> (§5).</p></li>
 </ol>
 <p>This guarantees that <strong>every SNP important for any trait is retained</strong>, while background pruning is performed once on the shared remaining set.</p>
 <p>The return value in multi-trait mode includes: - <code>$screening_stats</code> — a <strong>named list</strong> of per-trait <code>data.table</code>s. - <code>$candidate_snps_per_trait</code> — a named list of per-trait candidate vectors. - <code>$candidate_snps</code> — the union across all traits.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Access per-trait results</span></span>
 <span><span class="va">res</span><span class="op">$</span><span class="va">screening_stats</span><span class="op">$</span><span class="va">Trait1</span></span>
 <span><span class="va">res</span><span class="op">$</span><span class="va">screening_stats</span><span class="op">$</span><span class="va">Trait2</span></span>
@@ -461,7 +663,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <div class="section level2">
 <h2 id="scale-strategies">Scale strategies<a class="anchor" aria-label="anchor" href="#scale-strategies"></a>
 </h2>
-<p>The pipeline selects a scale strategy automatically based on the number of SNPs after MAF filtering. The strategy governs how <span class="math inline">\(r^2\)</span> matrices are computed throughout the pipeline.</p>
+<p>The pipeline selects a scale strategy automatically based on the number of SNPs after MAF filtering. The strategy governs how r² matrices are computed throughout the pipeline.</p>
 <table class="table">
 <colgroup>
 <col width="21%">
@@ -500,13 +702,13 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 </tbody>
 </table>
 <p>Override with <code>scale_strategy = "in_memory"</code> / <code>"chunked"</code> / <code>"gds"</code>. Adjust the automatic thresholds site-wide:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span></span>
 <span>  optsldp.thresh_small  <span class="op">=</span> <span class="fl">1e5</span>,   <span class="co"># below this: in_memory</span></span>
 <span>  optsldp.thresh_medium <span class="op">=</span> <span class="fl">1e6</span>    <span class="co"># below this: chunked; above: gds</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><strong>GDS setup for large panels.</strong> The GDS strategy writes the genotype matrix to a binary SNPRelate GDS file once at the start of the pipeline. All subsequent LD queries stream genotypes from disk in blocks — the full matrix never lives in RAM simultaneously. All GDS file handles are tracked in a package-level registry and closed on exit or on error.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Force GDS strategy and specify a persistent scratch directory</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_sldp.html">run_sldp</a></span><span class="op">(</span></span>
 <span>  genotype_file  <span class="op">=</span> <span class="st">"wgs_panel.vcf.gz"</span>,</span>
@@ -624,7 +826,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 </table>
 <p><strong>Step 5 — high-LD pre-pruning.</strong> Before screening, near-duplicate SNPs (<span class="math inline">\(r^2 \ge \tau_{\text{preprune}}\)</span>, default 0.99) are removed chromosome-by-chromosome. This reduces the screening workload substantially for dense arrays without discarding any independent signal. The pre-pruning threshold <span class="math inline">\(\tau_{\text{preprune}}\)</span> should be set very close to 1 — it is intended to catch perfect or near-perfect redundancy (e.g., duplicate probes, SNPs in complete disequilibrium) rather than biological LD.</p>
 <p><strong>Detailed example with all parameters:</strong></p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_sldp.html">run_sldp</a></span><span class="op">(</span></span>
 <span>  <span class="co"># ── Files ──────────────────────────────────────────────────────────────────</span></span>
 <span>  genotype_file        <span class="op">=</span> <span class="st">"panel.hmp.txt"</span>,</span>
@@ -774,7 +976,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 </tr>
 <tr>
 <td><code><a href="reference/preprune_high_ld.html">preprune_high_ld()</a></code></td>
-<td>Chromosome-wise near-duplicate removal at high <span class="math inline">\(r^2\)</span> threshold.</td>
+<td>Chromosome-wise near-duplicate removal at high r² threshold.</td>
 </tr>
 </tbody>
 </table>
@@ -818,7 +1020,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <tbody>
 <tr>
 <td><code><a href="reference/compute_r2_subset.html">compute_r2_subset()</a></code></td>
-<td>Pairwise <span class="math inline">\(r^2\)</span> matrix for a SNP subset. Scale-aware.</td>
+<td>Pairwise r² matrix for a SNP subset. Scale-aware.</td>
 </tr>
 <tr>
 <td><code><a href="reference/find_ld_neighbors.html">find_ld_neighbors()</a></code></td>
@@ -929,13 +1131,13 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <div class="section level3">
 <h3 id="explicit-garbage-collection">Explicit garbage collection<a class="anchor" aria-label="anchor" href="#explicit-garbage-collection"></a>
 </h3>
-<p><code>gc(FALSE)</code> is called immediately after each chunk is released (in both genotype readers) and after each chromosome’s <span class="math inline">\(r^2\)</span> matrix is released (in <code><a href="reference/preprune_high_ld.html">preprune_high_ld()</a></code> and <code><a href="reference/prune_background_snps.html">prune_background_snps()</a></code>). This prevents stale allocations from accumulating across 20–30 chromosomes in the greedy pruning loops and makes peak RSS track the working set more closely.</p>
+<p><code>gc(FALSE)</code> is called immediately after each chunk is released (in both genotype readers) and after each chromosome’s r² matrix is released (in <code><a href="reference/preprune_high_ld.html">preprune_high_ld()</a></code> and <code><a href="reference/prune_background_snps.html">prune_background_snps()</a></code>). This prevents stale allocations from accumulating across 20–30 chromosomes in the greedy pruning loops and makes peak RSS track the working set more closely.</p>
 </div>
 <div class="section level3">
 <h3 id="malformed-line-cleaning">Malformed line cleaning<a class="anchor" aria-label="anchor" href="#malformed-line-cleaning"></a>
 </h3>
 <p>Set <code>clean_malformed = TRUE</code> in <code><a href="reference/run_sldp.html">run_sldp()</a></code> or call <code><a href="reference/clean_genotype_file.html">clean_genotype_file()</a></code> directly to remove any lines whose delimiter-separated column count does not match the header. The function auto-detects the separator (tab for VCF/HapMap, comma for numeric CSV), streams in 50 000-line chunks, and writes the cleaned file to a temporary path that is deleted automatically after reading. This is required for VCF files produced by NGSEP and some other callers that embed <code>/</code> characters in FORMAT fields.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Standalone use</span></span>
 <span><span class="fu"><a href="reference/clean_genotype_file.html">clean_genotype_file</a></span><span class="op">(</span></span>
 <span>  file_in  <span class="op">=</span> <span class="st">"raw.vcf.gz"</span>,</span>
@@ -963,7 +1165,7 @@ Line02,1.881, 0.151,-0.492, 0.167</code></pre>
 <p>Full documentation, function reference, and tutorials are available at:</p>
 <p><a href="https://FAkohoue.github.io/OptSLDP/" class="uri">https://FAkohoue.github.io/OptSLDP/</a></p>
 <p>To read the vignette after installation:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"OptSLDP-introduction"</span>, package <span class="op">=</span> <span class="st">"OptSLDP"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>

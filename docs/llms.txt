@@ -2,13 +2,15 @@
 
 ![OptSLDP logo](reference/figures/logo.png)
 
+## Summary
+
 `OptSLDP` is an **optimized and extended** implementation of Selective
 Linkage Disequilibrium Pruning for genomic prediction panel
 construction. The core idea of SLDP — preserving all markers in strong
 LD with statistically important SNPs so that genomic models retain the
 full genetic signal around each QTL, while pruning redundant background
 markers — is retained from the original algorithm of Zhu et al. (2023).
-OptSLDP improves on that foundation in four concrete ways:
+OptSLDP improves on that foundation in 12 concrete ways:
 
 1.  **Memory-safe chunked reading** — genotype files are read in
     fixed-size row chunks with a pre-allocated output matrix, so peak
@@ -201,20 +203,33 @@ extension or can be set explicitly with `format =`.
 
 **Numeric dosage format** — one row per SNP, columns
 `SNP, CHR, POS, REF, ALT` followed by one column per sample, values in
-{0, 1, 2, NA}:
+`{0, 1, 2, NA}`:
 
-    SNP,CHR,POS,REF,ALT,Line01,Line02,...
-    SNP001,1,10000,A,T,0,1,...
-    SNP002,1,20000,G,C,2,0,...
+| SNP    | CHR | POS   | REF | ALT | Line01 | Line02 | …   |
+|--------|-----|-------|-----|-----|--------|--------|-----|
+| SNP001 | 1   | 10000 | A   | T   | 0      | 1      | …   |
+| SNP002 | 1   | 20000 | G   | C   | 2      | 0      | …   |
 
 **HapMap format** — standard 11-column header
 (`rs#, alleles, chrom, pos, strand, assembly#, center, protLSID, assayLSID, panelLSID, QCcode`)
 followed by sample columns containing two-character nucleotide calls
-(`AA`, `AT`, `TT`, `NN` for missing).
+(`AA`, `AT`, `TT`, `NN` for missing):
+
+| rs#    | alleles | chrom | pos   | strand | …   | QCcode | Line01 | Line02 | …   |
+|--------|---------|-------|-------|--------|-----|--------|--------|--------|-----|
+| SNP001 | A/T     | 1     | 10000 | \+     | …   | NA     | AA     | AT     | …   |
+| SNP002 | G/C     | 1     | 20000 | \+     | …   | NA     | CC     | GG     | …   |
+| SNP003 | C/G     | 1     | 30000 | \+     | …   | NA     | CG     | GG     | …   |
 
 **VCF** — standard VCF v4.2. Both phased (`0|1`) and unphased (`0/1`) GT
 fields are accepted. Multi-allelic sites use the first ALT allele.
-Missing calls (`./.`) become `NA`.
+Missing calls (`./.`) become `NA`:
+
+| \#CHROM | POS   | ID     | REF | ALT | QUAL | FILTER | INFO | FORMAT | Line01 | Line02 | …   |
+|---------|-------|--------|-----|-----|------|--------|------|--------|--------|--------|-----|
+| 1       | 10000 | SNP001 | A   | T   | .    | PASS   | .    | GT     | 0/0    | 0/1    | …   |
+| 1       | 20000 | SNP002 | G   | C   | .    | PASS   | .    | GT     | 1/1    | 0/0    | …   |
+| 1       | 30000 | SNP003 | C   | G   | .    | PASS   | .    | GT     | 0/1    | 1/1    | …   |
 
 Chromosome names with and without the `chr` prefix (`chr1` vs `1`) are
 normalised automatically at read time.
@@ -229,9 +244,11 @@ A delimited file with one row per sample. Required columns:
 | One or more trait columns | Numeric phenotype values | `trait_col` (default `"Trait1"`) |
 | Optional covariates | Shared across all traits | `covar_cols` |
 
-    Sample,Trait1,Trait2,PC1,PC2
-    Line01,1.198,-0.319,0.807,-0.505
-    Line02,1.881, 0.151,-0.492, 0.167
+| Sample | Trait1 | Trait2 | PC1    | PC2    |
+|--------|--------|--------|--------|--------|
+| Line01 | 1.198  | −0.319 | 0.807  | −0.505 |
+| Line02 | 1.881  | 0.151  | −0.492 | 0.167  |
+| …      | …      | …      | …      | …      |
 
 Sample alignment is handled internally. Samples present in the genotype
 file but absent from the phenotype file cause an informative error.
@@ -245,13 +262,13 @@ Extra samples in the phenotype file are dropped with a message.
 
 The ALT allele frequency is estimated from the dosage matrix as:
 
-\\\text{AF}\_i = \frac{\sum_j g\_{ij}}{2 n_j}\\
+\\\text{AF}\_i = \frac{\sum_j g\_{ij}}{2\\n_j}\\
 
-where \\g\_{ij} \in \\0, 1, 2, \text{NA}\\\\ is the dosage for SNP \\i\\
-in sample \\j\\, and \\n_j\\ is the number of non-missing samples for
-that SNP. The minor allele frequency is:
+where \\g\_{ij}\in\\0,1,2,\text{NA}\\\\ is the dosage for SNP \\i\\ in
+sample \\j\\, and \\n_j\\ is the number of non-missing samples for that
+SNP. The minor allele frequency is:
 
-\\\text{MAF}\_i = \min\\\left(\text{AF}\_i,\\ 1 - \text{AF}\_i\right)\\
+\\\text{MAF}\_i = \min\\\left(\text{AF}\_i,\\1-\text{AF}\_i\right)\\
 
 SNPs with \\\text{MAF}\_i \< \tau\_{\text{maf}}\\ (default 0.05) are
 removed before any further analysis.
@@ -262,11 +279,11 @@ OptSLDP uses a **Generalised Linear Model (GLM) with principal component
 covariates** for marker screening. For each SNP \\i\\ a marginal linear
 regression is fitted:
 
-\\y^\* = \alpha + \beta_i\\ g_i + \varepsilon\\
+\\y^\* = \alpha + \beta_i\\g_i + \varepsilon\\
 
-where \\y^\*\\ is the phenotype pre-adjusted for population structure
-(see below), \\g_i\\ is the dosage vector for SNP \\i\\, and
-\\\varepsilon \sim \mathcal{N}(0, \sigma^2 I)\\.
+where y\* is the phenotype pre-adjusted for population structure (see
+below), g_i is the dosage vector for SNP \\i\\, and \\\varepsilon \sim
+\mathcal{N}(0,\sigma^2 I)\\.
 
 **Why GLM + PCA is the right choice for panel construction.** The goal
 of the screening step in SLDP is not to produce a publication-quality
@@ -299,8 +316,8 @@ sufficient.
 is supplied), \\y\\ is first projected onto the covariate space and the
 residuals are used as the working phenotype:
 
-\\y^\* = y - X_c\\\left(X_c^\top X_c\right)^{-1} X_c^\top y = M\_{X_c}\\
-y\\
+\\y^\* = y - X_c\\\left(X_c^\top X_c\right)^{-1}X_c^\top y =
+M\_{X_c}\\y\\
 
 where \\M\_{X_c}\\ is the annihilator matrix and \\X_c\\ contains the PC
 scores. This is equivalent to fitting \\y \sim \text{PC1} + \text{PC2} +
@@ -333,15 +350,15 @@ Three modes control which SNPs enter the protected set:
 
 **Mode A — p-value threshold**
 
-\\\mathcal{C}\_A = \\i : p_i \le \tau_p\\\\
+\\\mathcal{C}\_A = \\\\i : p_i \le \tau_p\\\\\\
 
 Requires `pval_threshold`. Appropriate when a clear significance cutoff
 exists (e.g., Bonferroni or a permutation threshold).
 
 **Mode B — effect-size criteria**
 
-\\\mathcal{C}\_B = \\i : \|z_i\| \ge \tau_z \\\text{\[AND/OR\]}\\ R^2_i
-\ge \tau\_{\text{pve}}\\\\
+\\\mathcal{C}\_B = \\\\i : \|z_i\| \ge \tau_z \\\[\text{AND/OR}\]\\
+R^2_i \ge \tau\_{\text{pve}}\\\\\\
 
 Requires at least one of `z_threshold` or `pve_threshold`. The
 `threshold_logic` argument (`"AND"` or `"OR"`) controls how multiple
@@ -351,43 +368,42 @@ simultaneously.
 
 **Mode C — hybrid**
 
-\\\mathcal{C}\_C = \\i : p_i \le \tau_p \\\text{\[AND/OR\]}\\ \|z_i\|
-\ge \tau_z \\\text{\[AND/OR\]}\\ R^2_i \ge \tau\_{\text{pve}}\\\\
+\\\mathcal{C}\_C = \\\\i : p_i \le \tau_p \\\[\text{AND/OR}\]\\ \|z_i\|
+\ge \tau_z \\\[\text{AND/OR}\]\\ R^2_i \ge \tau\_{\text{pve}}\\\\\\
 
 Any combination of the three criteria, combined by `threshold_logic`.
 
 ### 4. Important SNP expansion
 
-The candidate set \\\mathcal{C}\\ is expanded into the full **protected
-set** \\\mathcal{I}\\ in two layers for each candidate \\c\\:
+The candidate set C is expanded into the full **protected set** I in two
+layers for each candidate c:
 
 **Layer 1 — positional window.** Every SNP on the same chromosome within
-\\\pm w\\ bp of \\c\\ is added:
+\\\pm w\\ bp of c is added:
 
-\\\mathcal{W}(c) = \\i : \text{chr}(i) = \text{chr}(c),\\
-\|\text{pos}(i) - \text{pos}(c)\| \le w\\\\
+\\\mathcal{W}(c) = \\\\i :
+\text{chr}(i)=\text{chr}(c),\\\|\text{pos}(i)-\text{pos}(c)\|\le w\\\\\\
 
 where \\w = w\_{\text{kb}} \times 1000\\ bp (default \\w\_{\text{kb}} =
 50\\, so \\w = 50\\000\\ bp on each side).
 
-**Layer 2 — LD neighbours (optional).** Among the window SNPs
-\\\mathcal{W}(c)\\, those with pairwise \\r^2\\ against the focal
-candidate \\c\\ at or above \\\tau\_{\text{flag}}\\ (default 0.90) are
-also added:
+**Layer 2 — LD neighbours (optional).** Among the window SNPs W(c),
+those with pairwise r² against the focal candidate c at or above
+\\\tau\_{\text{flag}}\\ (default 0.90) are also added:
 
-\\\mathcal{L}(c) = \\i \in \mathcal{W}(c) : r^2(i, c) \ge
-\tau\_{\text{flag}}\\\\
+\\\mathcal{L}(c) = \\\\i \in \mathcal{W}(c) : r^2(i,c) \ge
+\tau\_{\text{flag}}\\\\\\
 
 The full protected set is the union over all candidates:
 
-\\\mathcal{I} = \bigcup\_{c \in \mathcal{C}} \[\mathcal{W}(c) \cup
-\mathcal{L}(c)\]\\
+\\\mathcal{I} =
+\bigcup\_{c\\\in\\\mathcal{C}}\left\[\mathcal{W}(c)\cup\mathcal{L}(c)\right\]\\
 
-The \\r^2\\ statistic used here is the squared Pearson correlation
-computed from the dosage matrix with pairwise-complete observations:
+The r² statistic used here is the squared Pearson correlation computed
+from the dosage matrix with pairwise-complete observations:
 
-\\r^2(i, j) = \left\[\frac{\text{Cov}(g_i,
-g_j)}{\sqrt{\text{Var}(g_i)\\\text{Var}(g_j)}}\right\]^2\\
+\\r^2(i,j) =
+\left\[\frac{\text{Cov}(g_i,g_j)}{\sqrt{\text{Var}(g_i)\\\text{Var}(g_j)}}\right\]^2\\
 
 For the GDS strategy the correlation is computed by `snpgdsLDMat()` from
 the SNPRelate package, which streams genotypes from disk and returns the
@@ -395,11 +411,10 @@ same statistic.
 
 ### 5. Background LD pruning
 
-All SNPs outside \\\mathcal{I}\\ form the **background set**
-\\\mathcal{B} = \Omega \setminus \mathcal{I}\\ where \\\Omega\\ is the
-full post-filter SNP set. A greedy forward-selection algorithm is
-applied chromosome-by-chromosome, processing SNPs in genomic position
-order:
+All SNPs outside I form the **background set**
+\\\mathcal{B}=\Omega\setminus\mathcal{I}\\ where \\\Omega\\ is the full
+post-filter SNP set. A greedy forward-selection algorithm is applied
+chromosome-by-chromosome, processing SNPs in genomic position order:
 
     For each chromosome:
       Sort background SNPs by position
@@ -412,13 +427,13 @@ The default genome-wide pruning threshold is \\\tau\_{\text{genome}} =
 
 The final retained panel is:
 
-\\\text{Panel} = \mathcal{I} \\\cup\\ \text{retained}(\mathcal{B})\\
+\\\text{Panel} = \mathcal{I}\\\cup\\\text{retained}(\mathcal{B})\\
 
 For the GDS strategy the background pruning uses `snpgdsPruneLD()` from
 SNPRelate, which processes the chromosome in streaming blocks without
-loading the full \\r^2\\ matrix. The equivalent threshold passed to
-`snpgdsPruneLD` is \|r\| \>= sqrt(r2_genome) because that function
-operates on the correlation coefficient rather than r^2.
+loading the full r² matrix. The equivalent threshold passed to
+`snpgdsPruneLD` is \\\|r\| \ge \sqrt{\tau\_{\text{genome}}}\\ because
+that function operates on the correlation coefficient rather than r^2.
 
 ------------------------------------------------------------------------
 
@@ -428,21 +443,21 @@ When `trait_col` is a character vector of length \> 1, the pipeline runs
 **separate screening for every trait** and then takes the **union** of
 all per-trait candidate sets before expansion and pruning:
 
-1.  For each trait \\k \in \\1, \ldots, K\\\\:
+1.  For each trait \\k\in\\1,\ldots,K\\\\:
 
-    - Residualise \\y_k\\ on the shared covariates independently.
+    - Residualise y_k on the shared covariates independently.
     - Run the full marginal scan → per-trait statistics
-      \\(\hat\beta^{(k)}, p^{(k)}, R^{2(k)})\\.
+      \\(\hat\beta^{(k)},p^{(k)},R^{2(k)})\\.
     - Apply the threshold criteria → per-trait candidate set
       \\\mathcal{C}^{(k)}\\.
 
 2.  Form the **union candidate set**: \\\mathcal{C}^\* =
-    \bigcup\_{k=1}^{K} \mathcal{C}^{(k)}\\
+    \bigcup\_{k=1}^{K}\mathcal{C}^{(k)}\\
 
 3.  Expand \\\mathcal{C}^\*\\ into the protected set \\\mathcal{I}^\*\\
     using the window and LD-neighbour rules (§4).
 
-4.  Prune the background \\\Omega \setminus \mathcal{I}^\*\\ (§5).
+4.  Prune the background \\\Omega\setminus\mathcal{I}^\*\\ (§5).
 
 This guarantees that **every SNP important for any trait is retained**,
 while background pruning is performed once on the shared remaining set.
@@ -464,8 +479,8 @@ res$candidate_snps_per_trait$Trait2
 ## Scale strategies
 
 The pipeline selects a scale strategy automatically based on the number
-of SNPs after MAF filtering. The strategy governs how \\r^2\\ matrices
-are computed throughout the pipeline.
+of SNPs after MAF filtering. The strategy governs how r² matrices are
+computed throughout the pipeline.
 
 | Strategy | Trigger (default) | LD backend | Notes |
 |----|----|----|----|
@@ -616,7 +631,7 @@ res <- run_sldp(
 |----|----|
 | [`compute_maf()`](https://FAkohoue.github.io/OptSLDP/reference/compute_maf.md) | Compute AF and MAF for every SNP. |
 | [`filter_snps_by_maf()`](https://FAkohoue.github.io/OptSLDP/reference/filter_snps_by_maf.md) | Remove SNPs below MAF threshold. |
-| [`preprune_high_ld()`](https://FAkohoue.github.io/OptSLDP/reference/preprune_high_ld.md) | Chromosome-wise near-duplicate removal at high \\r^2\\ threshold. |
+| [`preprune_high_ld()`](https://FAkohoue.github.io/OptSLDP/reference/preprune_high_ld.md) | Chromosome-wise near-duplicate removal at high r² threshold. |
 
 ### Screening and selection
 
@@ -629,7 +644,7 @@ res <- run_sldp(
 
 | Function | Description |
 |----|----|
-| [`compute_r2_subset()`](https://FAkohoue.github.io/OptSLDP/reference/compute_r2_subset.md) | Pairwise \\r^2\\ matrix for a SNP subset. Scale-aware. |
+| [`compute_r2_subset()`](https://FAkohoue.github.io/OptSLDP/reference/compute_r2_subset.md) | Pairwise r² matrix for a SNP subset. Scale-aware. |
 | [`find_ld_neighbors()`](https://FAkohoue.github.io/OptSLDP/reference/find_ld_neighbors.md) | LD neighbours of a focal SNP. Scale-aware. |
 | [`expand_important_snps()`](https://FAkohoue.github.io/OptSLDP/reference/expand_important_snps.md) | Positional + LD expansion of candidate set. |
 | [`prune_background_snps()`](https://FAkohoue.github.io/OptSLDP/reference/prune_background_snps.md) | Greedy chromosome-wise LD pruning of non-protected SNPs. |
@@ -682,8 +697,7 @@ simultaneously). For a 500 K × 3 K panel this reduces peak usage from
 ### Explicit garbage collection
 
 `gc(FALSE)` is called immediately after each chunk is released (in both
-genotype readers) and after each chromosome’s \\r^2\\ matrix is released
-(in
+genotype readers) and after each chromosome’s r² matrix is released (in
 [`preprune_high_ld()`](https://FAkohoue.github.io/OptSLDP/reference/preprune_high_ld.md)
 and
 [`prune_background_snps()`](https://FAkohoue.github.io/OptSLDP/reference/prune_background_snps.md)).
