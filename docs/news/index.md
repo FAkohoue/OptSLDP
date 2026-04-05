@@ -92,18 +92,39 @@
 
 ### New features
 
-- **Automatic PCA for population structure (`n_pcs`)** –
+- **Fast automatic PCA for population structure (`n_pcs`)** –
   [`run_sldp()`](https://FAkohoue.github.io/OptSLDP/reference/run_sldp.md)
-  gains an `n_pcs` parameter. When set \> 0 and `covar_cols` is `NULL`,
-  principal components are computed automatically from a LD-pruned SNP
-  subset via `snpgdsPCA()` and used as covariates for screening. Users
-  specify only the number of PCs; no pre-computation required. Typical
-  usage: `n_pcs = 3L`.
+  gains `n_pcs`, `pca_method`, `pca_max_snps`, and `pca_seed`
+  parameters. When `n_pcs > 0` and `covar_cols` is `NULL`, principal
+  components are computed **after MAF filtering** from a
+  chromosome-balanced random sample of post-MAF SNPs via GRM
+  eigendecomposition — no LD pruning pass required. SNP subset size: all
+  SNPs (\< 5k), 20k (5k–200k), 30k (200k–1M), 40k (\> 1M, configurable
+  via `pca_max_snps`). Backend:
+  [`RSpectra::eigs_sym()`](https://rdrr.io/pkg/RSpectra/man/eigs.html)
+  if installed, otherwise base
+  [`eigen()`](https://rdrr.io/r/base/eigen.html)
+  (`pca_method = "auto"`). Typical usage: `n_pcs = 3L`.
 
 - **GDS end-to-end test (section 16)** – forces `scale_strategy = "gds"`
   on the small example dataset to exercise the full GDS path including
   FORK cluster and step 11 file writer. Catches future GDS handle
   corruption bugs.
+
+### New features (continued)
+
+- **PCA step moved after MAF filter (step 4b)** – previously PCA ran
+  before MAF filtering (step 3b), scanning all raw SNPs including
+  monomorphic/rare SNPs. Now runs after MAF filter on the reduced SNP
+  set, cutting the GRM extraction to post-MAF SNPs only.
+
+- **`RSpectra` optional dependency** – added to `Suggests`. When
+  installed,
+  [`RSpectra::eigs_sym()`](https://rdrr.io/pkg/RSpectra/man/eigs.html)
+  is used for partial eigendecomposition of the GRM (faster for large
+  sample sets \> 500 samples). Falls back silently to base
+  [`eigen()`](https://rdrr.io/r/base/eigen.html) when not installed.
+  `pca_method = "rspectra"` errors explicitly if `RSpectra` is absent.
 
 ### Infrastructure
 

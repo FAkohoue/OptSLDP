@@ -8,16 +8,20 @@
 </script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet"><link href="../deps/Fira_Code-0.4.10/font.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="OptSLDP: An Optimized Selective Linkage Disequilibrium Pruning Pipeline — OptSLDP-package"><meta name="description" content="OptSLDP implements an optimized and extended version of the Selective
 Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel
 construction. The package builds on the algorithm of Zhu et al. (2023) and
-addresses four concrete limitations of the original implementation:
-memory-safe chunked genotype reading, explicit per-chromosome garbage
-collection, multi-trait union protection, and covariate-adjusted marginal
-screening."><meta property="og:description" content="OptSLDP implements an optimized and extended version of the Selective
+extends the original implementation with 12 concrete improvements:
+memory-safe chunked genotype reading, per-chromosome garbage collection,
+multi-trait union protection, covariate-adjusted marginal screening,
+vectorised OLS, C++ LD and screening kernels, chromosome-streaming
+screening and output writing, parallel background pruning, and fast
+automatic PCA via GRM eigendecomposition."><meta property="og:description" content="OptSLDP implements an optimized and extended version of the Selective
 Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel
 construction. The package builds on the algorithm of Zhu et al. (2023) and
-addresses four concrete limitations of the original implementation:
-memory-safe chunked genotype reading, explicit per-chromosome garbage
-collection, multi-trait union protection, and covariate-adjusted marginal
-screening."><meta property="og:image" content="https://FAkohoue.github.io/OptSLDP/logo.svg"></head><body><p>
+extends the original implementation with 12 concrete improvements:
+memory-safe chunked genotype reading, per-chromosome garbage collection,
+multi-trait union protection, covariate-adjusted marginal screening,
+vectorised OLS, C++ LD and screening kernels, chromosome-streaming
+screening and output writing, parallel background pruning, and fast
+automatic PCA via GRM eigendecomposition."><meta property="og:image" content="https://FAkohoue.github.io/OptSLDP/logo.svg"></head><body><p>
 
 
 
@@ -72,10 +76,12 @@ screening."><meta property="og:image" content="https://FAkohoue.github.io/OptSLD
     <p><code>OptSLDP</code> implements an optimized and extended version of the Selective
 Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel
 construction. The package builds on the algorithm of Zhu et al. (2023) and
-addresses four concrete limitations of the original implementation:
-memory-safe chunked genotype reading, explicit per-chromosome garbage
-collection, multi-trait union protection, and covariate-adjusted marginal
-screening.</p>
+extends the original implementation with 12 concrete improvements:
+memory-safe chunked genotype reading, per-chromosome garbage collection,
+multi-trait union protection, covariate-adjusted marginal screening,
+vectorised OLS, C++ LD and screening kernels, chromosome-streaming
+screening and output writing, parallel background pruning, and fast
+automatic PCA via GRM eigendecomposition.</p>
     </div>
 
 
@@ -100,7 +106,7 @@ background markers.</p>
 
 <div class="section">
 <h3 id="optsldp-improvements-over-original-sldp">OptSLDP improvements over original SLDP<a class="anchor" aria-label="anchor" href="#optsldp-improvements-over-original-sldp"></a></h3>
-<table class="table table"><tr><td>Improvement</td><td>Description</td></tr><tr><td>Chunked reading</td><td>Genotype files are read in 50 K-row chunks with a pre-allocated matrix; peak RAM equals one chunk rather than twice the file</td></tr><tr><td>Per-chromosome <code><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc()</a></code></td><td><code>gc(FALSE)</code> is called after each chromosome's r^2 matrix is released in pre-pruning and background-pruning loops</td></tr><tr><td>Multi-trait union protection</td><td>Screening and candidate selection run independently per trait; the union of all per-trait candidate sets drives expansion and protection</td></tr><tr><td>GLM + PCA screening</td><td>Marginal OLS with PC covariates for population structure correction. False positives add a few extra protected markers (harmless); false negatives permanently lose QTL signal (critical). GLM + PCA avoids over-correction without O(n^3) mixed-model cost</td></tr><tr><td>Automatic PCA (<code>n_pcs</code>)</td><td>Set <code>n_pcs &gt; 0</code> to compute PCs automatically from a LD-pruned SNP subset via <code>snpgdsPCA()</code>; no pre-computation required</td></tr><tr><td>C++ LD and screening kernels</td><td><code>r2_subset_cpp()</code>, <code>above_threshold_subset_cpp()</code>, <code>greedy_prune_r2_cpp()</code>, <code>screen_chunk_cpp()</code> compiled via RcppArmadillo; zero R interpreter overhead; genotype variance cached across traits</td></tr><tr><td>Chromosome-streaming screening</td><td>Step 6 extracts and screens 50 k-SNP chunks, accumulating only statistics; peak RAM ~300 MB vs ~4 GB for full extraction</td></tr><tr><td>Chromosome-streaming output</td><td>Step 11 writes chromosome by chromosome from GDS; <code>final_geno_mat</code> is <code>NULL</code> for GDS runs</td></tr><tr><td>Parallel background pruning</td><td>Step 9 FORK workers each hold an independent GDS handle; parent handle closed before cluster, reopened after</td></tr></table></div>
+<table class="table table"><tr><td>Improvement</td><td>Description</td></tr><tr><td>Chunked reading</td><td>Genotype files are read in 50 K-row chunks with a pre-allocated matrix; peak RAM equals one chunk rather than twice the file</td></tr><tr><td>Per-chromosome <code><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc()</a></code></td><td><code>gc(FALSE)</code> is called after each chromosome's r^2 matrix is released in pre-pruning and background-pruning loops</td></tr><tr><td>Multi-trait union protection</td><td>Screening and candidate selection run independently per trait; the union of all per-trait candidate sets drives expansion and protection</td></tr><tr><td>GLM + PCA screening</td><td>Marginal OLS with PC covariates for population structure correction. False positives add a few extra protected markers (harmless); false negatives permanently lose QTL signal (critical). GLM + PCA avoids over-correction without O(n^3) mixed-model cost</td></tr><tr><td>Automatic PCA (<code>n_pcs</code>)</td><td>Fast GRM-based PCA after MAF filtering: chromosome-balanced SNP sample -&gt; GRM -&gt; eigendecomposition. No LD pruning pass. Subset size: all (&lt;5k SNPs), 20k (5k-200k), 30k (200k-1M), 40k (&gt;1M)</td></tr><tr><td>C++ LD and screening kernels</td><td><code>r2_subset_cpp()</code>, <code>above_threshold_subset_cpp()</code>, <code>greedy_prune_r2_cpp()</code>, <code>screen_chunk_cpp()</code> compiled via RcppArmadillo; zero R interpreter overhead; genotype variance cached across traits</td></tr><tr><td>Chromosome-streaming screening</td><td>Step 6 extracts and screens 50 k-SNP chunks, accumulating only statistics; peak RAM ~300 MB vs ~4 GB for full extraction</td></tr><tr><td>Chromosome-streaming output</td><td>Step 11 writes chromosome by chromosome from GDS; <code>final_geno_mat</code> is <code>NULL</code> for GDS runs</td></tr><tr><td>Parallel background pruning</td><td>Step 9 FORK workers each hold an independent GDS handle; parent handle closed before cluster, reopened after</td></tr></table></div>
 
 <div class="section">
 <h3 id="automatic-scale-strategy">Automatic scale strategy<a class="anchor" aria-label="anchor" href="#automatic-scale-strategy"></a></h3>
@@ -147,6 +153,9 @@ with:</p>
 <p><strong>data.table</strong> (&gt;= 1.14.0) is used for all tabular data operations.
 <strong>parallel</strong> provides <code>detectCores()</code> for the GDS backend thread count.
 <strong>stats</strong> provides <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code>, <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code>, and <code><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals()</a></code>.</p>
+<p>Optional CRAN package: <strong>RSpectra</strong> enables faster partial eigendecomposition
+for automatic PCA (<code>pca_method = "rspectra"</code> or <code>"auto"</code>); falls back
+silently to base <code><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen()</a></code> when not installed.</p>
 <p>Optional Bioconductor packages extend the package to large panels:
 <strong>SNPRelate</strong> and <strong>gdsfmt</strong> enable the GDS streaming backend for panels
 with more than 2 million SNPs; <strong>VariantAnnotation</strong>, <strong>GenomeInfoDb</strong>,

@@ -309,6 +309,7 @@
 .prune_background_chr_gds <- function(genofile, snp_ids,
                                       r2_genome    = 0.80,
                                       slide_max_bp = 1000000L,
+                                      method       = "corr",
                                       n_cores      = 1L) {
   .snprelate_call(
     SNPRelate::snpgdsLDpruning,
@@ -318,7 +319,7 @@
     slide.max.bp = slide_max_bp,
     slide.max.n  = -1L,
     missing.rate = 0.10,
-    method       = "corr",            # Pearson r -- consistent with r2 used elsewhere
+    method       = method,            # default "corr" -- consistent with r2 everywhere
     n_cores      = n_cores
   )
 }

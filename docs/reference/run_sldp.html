@@ -82,6 +82,9 @@ handled automatically.</p>
 <span>  trait_col <span class="op">=</span> <span class="st">"Trait1"</span>,</span>
 <span>  covar_cols <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  n_pcs <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  pca_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"grm_eigen"</span>, <span class="st">"rspectra"</span><span class="op">)</span>,</span>
+<span>  pca_max_snps <span class="op">=</span> <span class="fl">40000L</span>,</span>
+<span>  pca_seed <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"numeric"</span>, <span class="st">"hapmap"</span>, <span class="st">"vcf"</span><span class="op">)</span>,</span>
 <span>  output_format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"numeric"</span>, <span class="st">"hapmap"</span><span class="op">)</span>,</span>
 <span>  mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
@@ -141,10 +144,35 @@ Covariates are shared across all traits.  <code>NULL</code> = no covariates.</p>
 
 <dt id="arg-n-pcs">n_pcs<a class="anchor" aria-label="anchor" href="#arg-n-pcs"></a></dt>
 <dd><p>Number of principal components to compute
-automatically from the genotype data and use as covariates. Computed via
-<code>snpgdsPCA()</code> from SNPRelate on a LD-pruned SNP subset. Only used when
-<code>covar_cols</code> is <code>NULL</code>. Set to <code>0</code> (default) to disable. Typical values:
-3-5 for structured populations.</p></dd>
+automatically and use as covariates. Computed <strong>after MAF filtering</strong> from
+a chromosome-balanced SNP subset via GRM eigendecomposition – no LD
+pruning pass required. Only used when <code>covar_cols</code> is <code>NULL</code>. Set to <code>0</code>
+(default) to disable. Typical values: 3-5 for structured populations.</p></dd>
+
+
+<dt id="arg-pca-method">pca_method<a class="anchor" aria-label="anchor" href="#arg-pca-method"></a></dt>
+<dd><p>Eigendecomposition backend for automatic PCA:</p><ul><li><p><code>"auto"</code> (default): use <code><a href="https://rdrr.io/pkg/RSpectra/man/eigs.html" class="external-link">RSpectra::eigs_sym()</a></code> if the <code>RSpectra</code>
+package is installed, otherwise fall back to base <code><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen()</a></code>. A message
+is printed in either case when <code>verbose = TRUE</code>.</p></li>
+<li><p><code>"grm_eigen"</code>: always use base <code><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen()</a></code>. Computes all
+eigenvalues of the GRM; reliable on all platforms with no extra
+dependencies.</p></li>
+<li><p><code>"rspectra"</code>: always use <code><a href="https://rdrr.io/pkg/RSpectra/man/eigs.html" class="external-link">RSpectra::eigs_sym()</a></code>. Computes only
+the top <code>n_pcs</code> eigenvalues; faster for large sample sets (&gt; 500
+samples). Requires <code>RSpectra</code> to be installed:
+<code>install.packages("RSpectra")</code>. Raises an error if not available.</p></li>
+</ul></dd>
+
+
+<dt id="arg-pca-max-snps">pca_max_snps<a class="anchor" aria-label="anchor" href="#arg-pca-max-snps"></a></dt>
+<dd><p>Maximum SNPs used for PCA when the post-MAF SNP
+count exceeds 1 M. Default <code>40000L</code>. Smaller subsets (20k for 5k-200k
+SNPs, 30k for 200k-1M SNPs) are chosen automatically.</p></dd>
+
+
+<dt id="arg-pca-seed">pca_seed<a class="anchor" aria-label="anchor" href="#arg-pca-seed"></a></dt>
+<dd><p>Random seed for chromosome-balanced SNP sampling.
+Default <code>1L</code>.</p></dd>
 
 
 <dt id="arg-format">format<a class="anchor" aria-label="anchor" href="#arg-format"></a></dt>

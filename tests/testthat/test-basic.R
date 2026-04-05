@@ -31,7 +31,8 @@
 #                                  file writer; final_geno_mat NULL; CHR/POS order
 # 17.  read_hapmap_genotype()    -- structure, dimensions, values, REF/ALT;
 #                                  same dosage as numeric reader
-# 18.  n_pcs automatic PCA       -- runs without error; changes beta vs no PCs;
+# 18.  n_pcs automatic PCA       -- runs without error (no SNPRelate needed);
+#                                  changes beta vs no PCs; pca_method=grm_eigen;
 #                                  ignored when covar_cols provided
 # ==============================================================================
 
@@ -1707,9 +1708,7 @@ test_that("read_hapmap_genotype and read_numeric_genotype give same dosage matri
 # ==============================================================================
 
 test_that("run_sldp with n_pcs=2 runs without error and returns results", {
-  skip_if_not_installed("SNPRelate")
-  skip_if_not_installed("gdsfmt")
-
+  # New GRM-based PCA works without SNPRelate for in_memory strategy
   res <- run_sldp(
     genotype_file  = geno_file,
     phenotype_file = pheno_file,
@@ -1717,9 +1716,8 @@ test_that("run_sldp with n_pcs=2 runs without error and returns results", {
     trait_col      = "Trait1",
     mode           = "A",
     pval_threshold = 0.05,
-    n_pcs          = 2L,           # auto-compute 2 PCs
+    n_pcs          = 2L,           # auto-compute 2 PCs via GRM eigendecomposition
     preprune_large = FALSE,
-    gds_dir        = tempdir(),
     verbose        = FALSE
   )
   # Pipeline must complete and return all expected elements
@@ -1729,9 +1727,6 @@ test_that("run_sldp with n_pcs=2 runs without error and returns results", {
 })
 
 test_that("run_sldp n_pcs=2 changes screening stats vs no covariates", {
-  skip_if_not_installed("SNPRelate")
-  skip_if_not_installed("gdsfmt")
-
   res_no_pc <- run_sldp(
     genotype_file  = geno_file,
     phenotype_file = pheno_file,
@@ -1741,7 +1736,6 @@ test_that("run_sldp n_pcs=2 changes screening stats vs no covariates", {
     pval_threshold = 0.05,
     n_pcs          = 0L,
     preprune_large = FALSE,
-    gds_dir        = tempdir(),
     verbose        = FALSE
   )
   res_with_pc <- run_sldp(
@@ -1753,7 +1747,6 @@ test_that("run_sldp n_pcs=2 changes screening stats vs no covariates", {
     pval_threshold = 0.05,
     n_pcs          = 2L,
     preprune_large = FALSE,
-    gds_dir        = tempdir(),
     verbose        = FALSE
   )
   # Betas must differ after PC correction (at least some SNPs)
@@ -1764,6 +1757,24 @@ test_that("run_sldp n_pcs=2 changes screening stats vs no covariates", {
               info = "PC correction must change at least some beta values")
 })
 
+
+test_that("run_sldp n_pcs=2 with pca_method=grm_eigen produces valid PCs", {
+  # grm_eigen forces base eigen() regardless of RSpectra availability
+  res <- run_sldp(
+    genotype_file  = geno_file,
+    phenotype_file = pheno_file,
+    output_file    = tempfile(fileext = ".csv"),
+    trait_col      = "Trait1",
+    mode           = "A",
+    pval_threshold = 0.05,
+    n_pcs          = 2L,
+    pca_method     = "grm_eigen",  # explicitly use base eigen()
+    preprune_large = FALSE,
+    verbose        = FALSE
+  )
+  expect_true("final_snp_info" %in% names(res))
+  expect_true(nrow(res$final_snp_info) > 0L)
+})
 test_that("run_sldp n_pcs ignored when covar_cols provided", {
   # When covar_cols is supplied, n_pcs should have no effect
   res_covar <- run_sldp(

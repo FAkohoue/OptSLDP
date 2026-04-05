@@ -17,6 +17,9 @@ run_sldp(
   trait_col = "Trait1",
   covar_cols = NULL,
   n_pcs = 0L,
+  pca_method = c("auto", "grm_eigen", "rspectra"),
+  pca_max_snps = 40000L,
+  pca_seed = 1L,
   format = c("auto", "numeric", "hapmap", "vcf"),
   output_format = c("numeric", "hapmap"),
   mode = c("A", "B", "C"),
@@ -73,11 +76,43 @@ run_sldp(
 
 - n_pcs:
 
-  Number of principal components to compute automatically from the
-  genotype data and use as covariates. Computed via `snpgdsPCA()` from
-  SNPRelate on a LD-pruned SNP subset. Only used when `covar_cols` is
-  `NULL`. Set to `0` (default) to disable. Typical values: 3-5 for
-  structured populations.
+  Number of principal components to compute automatically and use as
+  covariates. Computed **after MAF filtering** from a
+  chromosome-balanced SNP subset via GRM eigendecomposition – no LD
+  pruning pass required. Only used when `covar_cols` is `NULL`. Set to
+  `0` (default) to disable. Typical values: 3-5 for structured
+  populations.
+
+- pca_method:
+
+  Eigendecomposition backend for automatic PCA:
+
+  - `"auto"` (default): use
+    [`RSpectra::eigs_sym()`](https://rdrr.io/pkg/RSpectra/man/eigs.html)
+    if the `RSpectra` package is installed, otherwise fall back to base
+    [`eigen()`](https://rdrr.io/r/base/eigen.html). A message is printed
+    in either case when `verbose = TRUE`.
+
+  - `"grm_eigen"`: always use base
+    [`eigen()`](https://rdrr.io/r/base/eigen.html). Computes all
+    eigenvalues of the GRM; reliable on all platforms with no extra
+    dependencies.
+
+  - `"rspectra"`: always use
+    [`RSpectra::eigs_sym()`](https://rdrr.io/pkg/RSpectra/man/eigs.html).
+    Computes only the top `n_pcs` eigenvalues; faster for large sample
+    sets (\> 500 samples). Requires `RSpectra` to be installed:
+    `install.packages("RSpectra")`. Raises an error if not available.
+
+- pca_max_snps:
+
+  Maximum SNPs used for PCA when the post-MAF SNP count exceeds 1 M.
+  Default `40000L`. Smaller subsets (20k for 5k-200k SNPs, 30k for
+  200k-1M SNPs) are chosen automatically.
+
+- pca_seed:
+
+  Random seed for chromosome-balanced SNP sampling. Default `1L`.
 
 - format:
 

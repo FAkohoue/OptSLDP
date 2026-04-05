@@ -85,7 +85,7 @@
                         <h4 data-toc-skip class="author">Félicien
 Akohoue</h4>
             
-            <h4 data-toc-skip class="date">2026-04-04</h4>
+            <h4 data-toc-skip class="date">2026-04-05</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/FAkohoue/OptSLDP/blob/HEAD/vignettes/OptSLDP-introduction.Rmd" class="external-link"><code>vignettes/OptSLDP-introduction.Rmd</code></a></small>
       <div class="d-none name"><code>OptSLDP-introduction.Rmd</code></div>
@@ -210,8 +210,8 @@ chromosomes simultaneously; ~8x speedup on multi-core Linux servers</td>
 </tr>
 <tr class="even">
 <td>Automatic PCA (<code>n_pcs</code>)</td>
-<td>PCs computed from LD-pruned SNPs via <code>snpgdsPCA()</code> and
-used as GLM covariates; no pre-computation required</td>
+<td>PCs computed from a chromosome-balanced SNP subset via GRM
+eigendecomposition; no LD pruning pass required</td>
 </tr>
 </tbody>
 </table>
@@ -236,7 +236,25 @@ used as GLM covariates; no pre-computation required</td>
 <span>                       <span class="st">"SummarizedExperiment"</span>, <span class="st">"Biostrings"</span>, <span class="st">"S4Vectors"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Optional: GDS backend for &gt; 2 M SNP panels (Bioconductor)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SNPRelate"</span>, <span class="st">"gdsfmt"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Optional: faster PCA eigendecomposition for n_pcs &gt; 0 (CRAN)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"RSpectra"</span><span class="op">)</span></span></code></pre></div>
+<p>When <code>n_pcs &gt; 0</code>, OptSLDP selects the PCA backend
+automatically:</p>
+<ul>
+<li>
+<strong><code>RSpectra</code> installed</strong> →
+<code><a href="https://rdrr.io/pkg/RSpectra/man/eigs.html" class="external-link">RSpectra::eigs_sym()</a></code> (partial eigendecomposition, faster
+for large sample sets &gt; 500 samples)</li>
+<li>
+<strong><code>RSpectra</code> not installed</strong> → base
+<code><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen()</a></code> (computes all eigenvalues, reliable on any
+platform, no extra dependencies)</li>
+</ul>
+<p>A message is printed at runtime indicating which backend is used. To
+force a specific backend, set <code>pca_method = "rspectra"</code> or
+<code>pca_method = "grm_eigen"</code>.</p>
 <p>Load the package:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://FAkohoue.github.io/OptSLDP">OptSLDP</a></span><span class="op">)</span></span></code></pre></div>

@@ -12,6 +12,9 @@ run_sldp(
   trait_col = "Trait1",
   covar_cols = NULL,
   n_pcs = 0L,
+  pca_method = c("auto", "grm_eigen", "rspectra"),
+  pca_max_snps = 40000L,
+  pca_seed = 1L,
   format = c("auto", "numeric", "hapmap", "vcf"),
   output_format = c("numeric", "hapmap"),
   mode = c("A", "B", "C"),
@@ -54,10 +57,31 @@ character vector for multi-trait analysis.  Default \code{"Trait1"}.}
 Covariates are shared across all traits.  \code{NULL} = no covariates.}
 
 \item{n_pcs}{Number of principal components to compute
-automatically from the genotype data and use as covariates. Computed via
-\code{snpgdsPCA()} from SNPRelate on a LD-pruned SNP subset. Only used when
-\code{covar_cols} is \code{NULL}. Set to \code{0} (default) to disable. Typical values:
-3-5 for structured populations.}
+automatically and use as covariates. Computed \strong{after MAF filtering} from
+a chromosome-balanced SNP subset via GRM eigendecomposition -- no LD
+pruning pass required. Only used when \code{covar_cols} is \code{NULL}. Set to \code{0}
+(default) to disable. Typical values: 3-5 for structured populations.}
+
+\item{pca_method}{Eigendecomposition backend for automatic PCA:
+\itemize{
+\item \code{"auto"} (default): use \code{RSpectra::eigs_sym()} if the \code{RSpectra}
+package is installed, otherwise fall back to base \code{eigen()}. A message
+is printed in either case when \code{verbose = TRUE}.
+\item \code{"grm_eigen"}: always use base \code{eigen()}. Computes all
+eigenvalues of the GRM; reliable on all platforms with no extra
+dependencies.
+\item \code{"rspectra"}: always use \code{RSpectra::eigs_sym()}. Computes only
+the top \code{n_pcs} eigenvalues; faster for large sample sets (> 500
+samples). Requires \code{RSpectra} to be installed:
+\code{install.packages("RSpectra")}. Raises an error if not available.
+}}
+
+\item{pca_max_snps}{Maximum SNPs used for PCA when the post-MAF SNP
+count exceeds 1 M. Default \code{40000L}. Smaller subsets (20k for 5k-200k
+SNPs, 30k for 200k-1M SNPs) are chosen automatically.}
+
+\item{pca_seed}{Random seed for chromosome-balanced SNP sampling.
+Default \code{1L}.}
 
 \item{format}{Genotype format: \code{"auto"} (default), \code{"numeric"},
 \code{"hapmap"}, or \code{"vcf"}.}

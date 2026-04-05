@@ -3,10 +3,12 @@
 #' `OptSLDP` implements an optimized and extended version of the Selective
 #' Linkage Disequilibrium Pruning (SLDP) pipeline for genomic prediction panel
 #' construction. The package builds on the algorithm of Zhu et al. (2023) and
-#' addresses four concrete limitations of the original implementation:
-#' memory-safe chunked genotype reading, explicit per-chromosome garbage
-#' collection, multi-trait union protection, and covariate-adjusted marginal
-#' screening.
+#' extends the original implementation with 12 concrete improvements:
+#' memory-safe chunked genotype reading, per-chromosome garbage collection,
+#' multi-trait union protection, covariate-adjusted marginal screening,
+#' vectorised OLS, C++ LD and screening kernels, chromosome-streaming
+#' screening and output writing, parallel background pruning, and fast
+#' automatic PCA via GRM eigendecomposition.
 #'
 #' @details
 #' ## Core idea
@@ -33,7 +35,7 @@
 #' | Per-chromosome `gc()` | `gc(FALSE)` is called after each chromosome's r^2 matrix is released in pre-pruning and background-pruning loops |
 #' | Multi-trait union protection | Screening and candidate selection run independently per trait; the union of all per-trait candidate sets drives expansion and protection |
 #' | GLM + PCA screening | Marginal OLS with PC covariates for population structure correction. False positives add a few extra protected markers (harmless); false negatives permanently lose QTL signal (critical). GLM + PCA avoids over-correction without O(n^3) mixed-model cost |
-#' | Automatic PCA (`n_pcs`) | Set `n_pcs > 0` to compute PCs automatically from a LD-pruned SNP subset via `snpgdsPCA()`; no pre-computation required |
+#' | Automatic PCA (`n_pcs`) | Fast GRM-based PCA after MAF filtering: chromosome-balanced SNP sample -> GRM -> eigendecomposition. No LD pruning pass. Subset size: all (<5k SNPs), 20k (5k-200k), 30k (200k-1M), 40k (>1M) |
 #' | C++ LD and screening kernels | `r2_subset_cpp()`, `above_threshold_subset_cpp()`, `greedy_prune_r2_cpp()`, `screen_chunk_cpp()` compiled via RcppArmadillo; zero R interpreter overhead; genotype variance cached across traits |
 #' | Chromosome-streaming screening | Step 6 extracts and screens 50 k-SNP chunks, accumulating only statistics; peak RAM ~300 MB vs ~4 GB for full extraction |
 #' | Chromosome-streaming output | Step 11 writes chromosome by chromosome from GDS; `final_geno_mat` is `NULL` for GDS runs |
@@ -123,6 +125,10 @@
 #' **data.table** (>= 1.14.0) is used for all tabular data operations.
 #' **parallel** provides `detectCores()` for the GDS backend thread count.
 #' **stats** provides `lm()`, `cor()`, and `residuals()`.
+#'
+#' Optional CRAN package: **RSpectra** enables faster partial eigendecomposition
+#' for automatic PCA (`pca_method = "rspectra"` or `"auto"`); falls back
+#' silently to base `eigen()` when not installed.
 #'
 #' Optional Bioconductor packages extend the package to large panels:
 #' **SNPRelate** and **gdsfmt** enable the GDS streaming backend for panels

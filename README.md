@@ -1,7 +1,7 @@
 # OptSLDP — An Optimized Selective Linkage Disequilibrium Pruning Pipeline
 
 <p align="center">
-  <img src="man/figures/logo.png" alt="OptSLDP logo" width="180px">
+  <img src="man/figures/logo.png" alt="OptSLDP logo" width="190px">
 </p>
 
 <!-- badges: start -->
@@ -127,7 +127,15 @@ BiocManager::install(c("VariantAnnotation", "GenomeInfoDb",
 
 # Large-panel GDS backend (> 2 M SNPs, Bioconductor)
 BiocManager::install(c("SNPRelate", "gdsfmt"))
+
+# Optional: faster PCA eigendecomposition (recommended for n_pcs > 0)
+install.packages("RSpectra")
 ```
+
+> **Tip — automatic PCA:** when `n_pcs > 0`, OptSLDP uses a fast GRM-based
+> PCA that requires no LD pruning pass. If `RSpectra` is installed the partial
+> eigendecomposition is used (faster for large sample sets); otherwise base
+> `eigen()` is used automatically with no user action required.
 
 Bioconductor packages are not installed automatically by `remotes` — run the
 blocks above once if you need VCF support or plan to work with whole-genome
@@ -266,8 +274,7 @@ The ALT allele frequency is estimated from the dosage matrix as:
 
 $$\text{AF}_i = \frac{\sum_j g_{ij}}{2\,n_j}$$
 
-where $g_{ij}\in\{0,1,2,\text{NA}\}$ is the dosage for SNP $i$ in sample
-$j$, and $n_j$ is the number of non-missing samples for that SNP. The minor
+where $g_{ij}\in\{0,1,2,\text{NA}\}$ is the dosage for SNP $i$ in sample $j$, and $n_j$ is the number of non-missing samples for that SNP. The minor
 allele frequency is:
 
 $$\text{MAF}_i = \min\!\left(\text{AF}_i,\;1-\text{AF}_i\right)$$
@@ -283,8 +290,7 @@ regression is fitted:
 
 $$y^* = \alpha + \beta_i\,g_i + \varepsilon$$
 
-where y* is the phenotype pre-adjusted for population structure (see
-below), g_i is the dosage vector for SNP $i$, and
+where $y^*$ is the phenotype pre-adjusted for population structure, $g_i$ is the dosage vector for SNP $i$, and
 $\varepsilon \sim \mathcal{N}(0,\sigma^2 I)$.
 
 **Why GLM + PCA is the right choice for panel construction.**
@@ -381,19 +387,16 @@ Any combination of the three criteria, combined by `threshold_logic`.
 
 ### 4. Important SNP expansion
 
-The candidate set C is expanded into the full **protected set** I in two layers for each candidate c:
+The candidate set $\mathcal{C}$ is expanded into the full **protected set** $\mathcal{I}$ in two layers for each candidate $c$:
 
 **Layer 1 — positional window.** Every SNP on the same chromosome within
-$\pm w$ bp of c is added:
+$\pm w$ bp of $c$ is added:
 
 $$\mathcal{W}(c) = \{\,i : \text{chr}(i)=\text{chr}(c),\;|\text{pos}(i)-\text{pos}(c)|\le w\,\}$$
 
-where $w = w_{\text{kb}} \times 1000$ bp (default $w_{\text{kb}} = 50$, so
-$w = 50\,000$ bp on each side).
+where $w = w_{\text{kb}} \times 1000$ bp (default $w_{\text{kb}} = 50$, giving $w = 50\,000$ bp on each side).
 
-**Layer 2 — LD neighbours (optional).** Among the window SNPs W(c),
-those with pairwise r² against the focal candidate c at or above
-$\tau_{\text{flag}}$ (default 0.90) are also added:
+**Layer 2 — LD neighbours (optional).** Among the window SNPs $\mathcal{W}(c)$, those with pairwise $r^2$ against the focal candidate $c$ at or above $\tau_{\text{flag}}$ (default 0.90) are also added:
 
 $$\mathcal{L}(c) = \{\,i \in \mathcal{W}(c) : r^2(i,c) \ge \tau_{\text{flag}}\,\}$$
 
@@ -412,9 +415,7 @@ statistic.
 
 ### 5. Background LD pruning
 
-All SNPs outside I form the **background set**
-$\mathcal{B}=\Omega\setminus\mathcal{I}$ where $\Omega$ is the full
-post-filter SNP set. A greedy forward-selection algorithm is applied
+All SNPs outside $\mathcal{I}$ form the **background set** $\mathcal{B}=\Omega\setminus\mathcal{I}$, where $\Omega$ is the full post-filter SNP set. A greedy forward-selection algorithm is applied
 chromosome-by-chromosome, processing SNPs in genomic position order:
 
 ```
@@ -434,8 +435,7 @@ $$\text{Panel} = \mathcal{I}\;\cup\;\text{retained}(\mathcal{B})$$
 For the GDS strategy the background pruning uses `snpgdsPruneLD()` from
 SNPRelate, which processes the chromosome in streaming blocks without loading
 the full r² matrix. The equivalent threshold passed to `snpgdsPruneLD` is
-$|r| \ge \sqrt{\tau_{\text{genome}}}$ because that function operates on the
-correlation coefficient rather than r^2.
+$|r| \ge \sqrt{\tau_{\text{genome}}}$ because that function operates on the correlation coefficient rather than $r^2$.
 
 ---
 
@@ -527,7 +527,7 @@ The 12 steps executed by `run_sldp()` in order:
 | 1 | Read genotype file (optionally clean malformed lines) | `format`, `clean_malformed` |
 | 2 | Read phenotype, align samples | `sample_col`, `trait_col`, `covar_cols` |
 | 3 | Select scale strategy, write GDS if needed | `scale_strategy`, `gds_dir`, `n_cores` |
-| 3b | Automatic PCA for population structure *(optional)* | `n_pcs` |
+| 4b | Fast PCA via GRM eigendecomposition *(optional, after MAF filter)* | `n_pcs`, `pca_method`, `pca_max_snps`, `pca_seed` |
 | 4 | MAF filter | `maf_threshold` |
 | 5 | High-LD pre-pruning *(optional)* | `preprune_large`, `preprune_r2` |
 | 6 | Chromosome-streaming screening: extract one chromosome at a time, screen it, accumulate statistics, free RAM before next chromosome *(GDS)*; or screen full in-memory matrix *(in_memory/chunked)* | — |

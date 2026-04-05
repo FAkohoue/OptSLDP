@@ -3,7 +3,6 @@
 # recognises OptSLDP as a data.table-aware package.  This file does nothing at
 # runtime; its sole purpose is to generate the importFrom() lines in NAMESPACE
 # that data.table requires when ':=' or other special operators are used.
-
 #' @importFrom data.table ':='
 #' @importFrom data.table '.N'
 #' @importFrom data.table '.SD'

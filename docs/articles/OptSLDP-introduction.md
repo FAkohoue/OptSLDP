@@ -49,7 +49,7 @@ The final panel is \\\mathcal{I} \cup \text{retained}(\mathcal{B})\\.
 | Chromosome-streaming screening | Step 6 extracts and screens one 50k-SNP chunk at a time in GDS mode; peak RAM ~300 MB vs ~4 GB for full extraction |
 | Chromosome-streaming output | Step 11 writes final panel chromosome-by-chromosome from GDS; `final_geno_mat` is `NULL` for GDS runs |
 | Parallel background pruning | Step 9 uses FORK workers (one GDS handle per worker) to prune chromosomes simultaneously; ~8x speedup on multi-core Linux servers |
-| Automatic PCA (`n_pcs`) | PCs computed from LD-pruned SNPs via `snpgdsPCA()` and used as GLM covariates; no pre-computation required |
+| Automatic PCA (`n_pcs`) | PCs computed from a chromosome-balanced SNP subset via GRM eigendecomposition; no LD pruning pass required |
 
 ------------------------------------------------------------------------
 
@@ -71,7 +71,24 @@ BiocManager::install(c("VariantAnnotation", "GenomeInfoDb",
 
 # Optional: GDS backend for > 2 M SNP panels (Bioconductor)
 BiocManager::install(c("SNPRelate", "gdsfmt"))
+
+# Optional: faster PCA eigendecomposition for n_pcs > 0 (CRAN)
+install.packages("RSpectra")
 ```
+
+When `n_pcs > 0`, OptSLDP selects the PCA backend automatically:
+
+- **`RSpectra` installed** →
+  [`RSpectra::eigs_sym()`](https://rdrr.io/pkg/RSpectra/man/eigs.html)
+  (partial eigendecomposition, faster for large sample sets \> 500
+  samples)
+- **`RSpectra` not installed** → base
+  [`eigen()`](https://rdrr.io/r/base/eigen.html) (computes all
+  eigenvalues, reliable on any platform, no extra dependencies)
+
+A message is printed at runtime indicating which backend is used. To
+force a specific backend, set `pca_method = "rspectra"` or
+`pca_method = "grm_eigen"`.
 
 Load the package:
 

@@ -302,6 +302,7 @@ prune_background_snps <- function(remaining_snps,
         gf, chr_snps,
         r2_genome    = r2_genome,
         slide_max_bp = slide_max_bp,
+        method       = "corr",
         n_cores      = threads_per_chr
       )
     }

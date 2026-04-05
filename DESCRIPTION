@@ -16,7 +16,9 @@ Description: Implements OptSLDP, an optimized and extended version of the
     that accumulates only statistics without loading full genotype matrices;
     chromosome-streaming output writing; parallel background pruning via
     independent per-worker GDS handles; and automatic PCA for population
-    structure correction via the `n_pcs` parameter. Supports three input formats (numeric
+    structure correction via the `n_pcs` parameter (fast GRM
+    eigendecomposition on a chromosome-balanced SNP subset;
+    optional RSpectra backend for partial eigendecomposition). Supports three input formats (numeric
     dosage, HapMap, VCF), three candidate selection modes (p-value, z-score,
     PVE), positional and LD-based expansion of protected marker sets,
     chromosome-wise background pruning, and stream-cleaning of malformed
@@ -40,6 +42,7 @@ Imports:
 Suggests:
     SNPRelate (>= 1.26.0),
     gdsfmt (>= 1.28.0),
+    RSpectra,
     VariantAnnotation,
     SummarizedExperiment,
     GenomeInfoDb,

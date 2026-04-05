@@ -10,7 +10,7 @@ Checked on:
 
 ## Test suite
 
-- 204 tests passing, 0 failures, 0 skipped
+- 212 tests passing, 0 failures, 0 skipped
 - Test file: `tests/testthat/test-basic.R`
 - Covers: I/O (all 3 formats), MAF filtering, pre-pruning, screening
   (single- and multi-trait), candidate selection (modes A/B/C),
@@ -26,7 +26,9 @@ pipeline for genomic prediction panel construction. The package:
 
 - Reads genotype data in numeric dosage, HapMap, or VCF format
 - Performs MAF filtering, optional high-LD pre-pruning, covariate-adjusted
-  marginal screening, and candidate selection (modes A/B/C)
+  marginal screening (GLM + PCA), and candidate selection (modes A/B/C)
+- Automatic fast PCA after MAF filtering: chromosome-balanced GRM
+  eigendecomposition; optional RSpectra backend; no LD pruning pass required
 - Expands candidate SNPs into a protected set via positional windows and
   LD neighbours, then applies greedy background pruning
 - Scales automatically from small in-memory panels to whole-genome
@@ -48,6 +50,7 @@ pipeline for genomic prediction panel construction. The package:
 - SNPRelate (>= 1.26.0) -- required only for scale_strategy = "gds"
   (datasets > 2M SNPs). Not required for standard use.
 - gdsfmt (>= 1.28.0) -- dependency of SNPRelate
+- RSpectra -- optional; faster PCA eigendecomposition (CRAN)
 - VariantAnnotation, SummarizedExperiment, GenomeInfoDb,
   Biostrings, S4Vectors -- required only for VCF input format
 

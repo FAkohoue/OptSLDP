@@ -88,10 +88,28 @@
 #' @param covar_cols          Covariate column name(s) in the phenotype file.
 #'   Covariates are shared across all traits.  `NULL` = no covariates.
 #' @param n_pcs               Number of principal components to compute
-#'   automatically from the genotype data and use as covariates. Computed via
-#'   `snpgdsPCA()` from SNPRelate on a LD-pruned SNP subset. Only used when
-#'   `covar_cols` is `NULL`. Set to `0` (default) to disable. Typical values:
-#'   3-5 for structured populations.
+#'   automatically and use as covariates. Computed **after MAF filtering** from
+#'   a chromosome-balanced SNP subset via GRM eigendecomposition -- no LD
+#'   pruning pass required. Only used when `covar_cols` is `NULL`. Set to `0`
+#'   (default) to disable. Typical values: 3-5 for structured populations.
+#' @param pca_method          Eigendecomposition backend for automatic PCA:
+#'   \itemize{
+#'     \item `"auto"` (default): use `RSpectra::eigs_sym()` if the `RSpectra`
+#'       package is installed, otherwise fall back to base `eigen()`. A message
+#'       is printed in either case when `verbose = TRUE`.
+#'     \item `"grm_eigen"`: always use base `eigen()`. Computes all
+#'       eigenvalues of the GRM; reliable on all platforms with no extra
+#'       dependencies.
+#'     \item `"rspectra"`: always use `RSpectra::eigs_sym()`. Computes only
+#'       the top `n_pcs` eigenvalues; faster for large sample sets (> 500
+#'       samples). Requires `RSpectra` to be installed:
+#'       `install.packages("RSpectra")`. Raises an error if not available.
+#'   }
+#' @param pca_max_snps        Maximum SNPs used for PCA when the post-MAF SNP
+#'   count exceeds 1 M. Default `40000L`. Smaller subsets (20k for 5k-200k
+#'   SNPs, 30k for 200k-1M SNPs) are chosen automatically.
+#' @param pca_seed            Random seed for chromosome-balanced SNP sampling.
+#'   Default `1L`.
 #' @param format              Genotype format: `"auto"` (default), `"numeric"`,
 #'   `"hapmap"`, or `"vcf"`.
 #' @param output_format       Output format: `"numeric"` (default) or
@@ -212,6 +230,9 @@ run_sldp <- function(genotype_file,
                      trait_col              = "Trait1",
                      covar_cols             = NULL,
                      n_pcs                  = 0L,
+                     pca_method             = c("auto", "grm_eigen", "rspectra"),
+                     pca_max_snps           = 40000L,
+                     pca_seed               = 1L,
                      format                 = c("auto", "numeric",
                                                 "hapmap", "vcf"),
                      output_format          = c("numeric", "hapmap"),
@@ -241,6 +262,7 @@ run_sldp <- function(genotype_file,
   output_format   <- match.arg(output_format)
   mode            <- match.arg(mode)
   threshold_logic <- match.arg(threshold_logic)
+  pca_method      <- match.arg(pca_method)
   trait_col       <- as.character(trait_col)
   multi_trait     <- length(trait_col) > 1L
 
@@ -320,89 +342,6 @@ run_sldp <- function(genotype_file,
                                  verbose = verbose)
   geno_mat <- ctx$geno_mat   # NULL for GDS path
 
-  # -- Step 3b: Automatic PCA for population structure correction -------------
-  # When n_pcs > 0 and covar_cols is NULL, compute PCs from the GDS file
-  # and prepend them to the covariate matrix. Uses LD-pruned SNPs for speed.
-  # PCA runs on the full post-read SNP set (before MAF filter) so that the
-  # population structure estimate is based on maximum information.
-  if (n_pcs > 0L && is.null(covariates)) {
-    .report_progress("[3b] Computing ", n_pcs, " PCs for population structure ...",
-                     verbose = verbose)
-    .assert_packages("SNPRelate")
-
-    if (identical(strategy, "gds")) {
-      # Use the already-open GDS handle
-      pca_gf <- ctx$genofile
-    } else {
-      # For in-memory/chunked: write a temporary GDS, run PCA, clean up
-      pca_gds_path <- file.path(gds_dir, "sldp_pca_tmp.gds")
-      .write_gds(geno_mat, snp_info, pca_gds_path,
-                 n_cores = n_cores, verbose = FALSE)
-      pca_gf <- .open_gds(pca_gds_path, key = "pca_tmp")
-    }
-
-    # LD-prune to ~10k SNPs before PCA for speed and numerical stability
-    pca_snps <- tryCatch({
-      kept <- SNPRelate::snpgdsLDpruning(
-        pca_gf,
-        ld.threshold = sqrt(0.1),   # r2 < 0.1 -- stringent for PCA
-        slide.max.bp = 500000L,
-        slide.max.n  = -1L,
-        missing.rate = 0.10,
-        method       = "corr",
-        num.thread   = n_cores,
-        verbose      = FALSE
-      )
-      unlist(kept, use.names = FALSE)
-    }, error = function(e) {
-      warning("PCA LD pruning failed, using all SNPs: ", e$message,
-              call. = FALSE)
-      snp_info$SNP
-    })
-
-    .report_progress("    PCA pruned set: ", length(pca_snps), " SNPs",
-                     verbose = verbose)
-
-    pca_res <- tryCatch(
-      SNPRelate::snpgdsPCA(
-        pca_gf,
-        snp.id     = pca_snps,
-        num.thread = n_cores,
-        verbose    = FALSE
-      ),
-      error = function(e) stop("PCA failed: ", e$message, call. = FALSE)
-    )
-
-    # Close temporary GDS if we opened one
-    if (!identical(strategy, "gds")) {
-      .close_gds(pca_gf, key = "pca_tmp")
-      unlink(pca_gds_path)
-    }
-
-    # Align PCs to sample order
-    n_pcs_avail <- min(n_pcs, ncol(pca_res$eigenvect))
-    if (n_pcs_avail < n_pcs)
-      warning("Only ", n_pcs_avail, " PCs available (requested ", n_pcs, ").",
-              call. = FALSE)
-
-    pc_mat <- pca_res$eigenvect[, seq_len(n_pcs_avail), drop = FALSE]
-    rownames(pc_mat) <- pca_res$sample.id
-    colnames(pc_mat) <- paste0("PC", seq_len(n_pcs_avail))
-
-    # Align to sample order used throughout the pipeline
-    pc_mat <- pc_mat[g$sample_ids, , drop = FALSE]
-
-    # Prepend PCs to any existing covariates
-    covariates <- if (is.null(covariates)) {
-      as.data.frame(pc_mat)
-    } else {
-      cbind(as.data.frame(pc_mat), as.data.frame(covariates))
-    }
-
-    .report_progress("    Using PC1-PC", n_pcs_avail,
-                     " as covariates for screening", verbose = verbose)
-  }
-
   # -- Step 4: MAF filter -----------------------------------------------------
   .report_progress("[4] MAF filtering (>= ", maf_threshold, ") ...",
                    verbose = verbose)
@@ -418,6 +357,149 @@ run_sldp <- function(genotype_file,
                                         paste0("maf>=", maf_threshold))
   .report_progress("    After MAF filter: ", nrow(snp_info), " SNPs",
                    verbose = verbose)
+
+  # -- Step 4b: Fast automatic PCA for population structure correction --------
+  # Runs AFTER MAF filtering. Uses a chromosome-balanced random sample of
+  # post-MAF SNPs to build a sample x sample GRM, then extracts the top PCs
+  # by eigendecomposition. No LD pruning pass required -- just one small matrix
+  # extraction from GDS. Strategy:
+  #
+  #   post-MAF SNPs   |  PCA SNP subset
+  #   ----------------|-----------------
+  #   < 5 000         |  all SNPs
+  #   5 000 - 200 000 |  20 000
+  #   200 000 - 1 M   |  30 000
+  #   > 1 M           |  40 000  (default pca_max_snps)
+  #
+  # Backend:
+  #   "auto"       -> RSpectra::eigs_sym() if installed, else base eigen()
+  #   "rspectra"   -> always RSpectra
+  #   "grm_eigen"  -> always base eigen()
+  if (n_pcs > 0L && is.null(covariates)) {
+
+    .report_progress("[4b] Computing ", n_pcs,
+                     " PCs for population structure (fast GRM method) ...",
+                     verbose = verbose)
+
+    total_snps <- nrow(snp_info)
+
+    # -- Choose subset size based on post-MAF SNP count ----------------------
+    target_snps <- if (total_snps < 5000L) {
+      total_snps
+    } else if (total_snps < 200000L) {
+      min(20000L, total_snps)
+    } else if (total_snps < 1000000L) {
+      min(30000L, total_snps)
+    } else {
+      min(pca_max_snps, total_snps)
+    }
+
+    .report_progress("    SNP subset target: ", target_snps,
+                     " (from ", total_snps, " post-MAF SNPs)",
+                     verbose = verbose)
+
+    # -- Chromosome-balanced sampling ----------------------------------------
+    set.seed(pca_seed)
+    chr_levels_pca <- unique(snp_info$CHR)
+    pca_snps <- unique(unlist(lapply(chr_levels_pca, function(chr) {
+      chr_ids <- snp_info$SNP[snp_info$CHR == chr]
+      n_take  <- max(1L, round(target_snps * length(chr_ids) / total_snps))
+      sample(chr_ids, min(n_take, length(chr_ids)), replace = FALSE)
+    }), use.names = FALSE))
+
+    .report_progress("    Chromosome-balanced subset: ", length(pca_snps),
+                     " SNPs across ", length(chr_levels_pca),
+                     " chromosomes", verbose = verbose)
+
+    # -- Extract genotype subset from GDS or in-memory matrix ----------------
+    if (identical(strategy, "gds")) {
+      pca_X <- tryCatch(
+        .extract_geno_gds(ctx$genofile,
+                          snp_ids    = pca_snps,
+                          sample_ids = g$sample_ids),
+        error = function(e)
+          stop("PCA genotype extraction failed: ", e$message, call. = FALSE)
+      )
+    } else {
+      # In-memory / chunked: slice directly from geno_mat
+      pca_X <- geno_mat[pca_snps, , drop = FALSE]
+    }
+
+    # -- Mean imputation of missing genotypes --------------------------------
+    if (anyNA(pca_X)) {
+      snp_means_pca <- rowMeans(pca_X, na.rm = TRUE)
+      na_idx_pca    <- which(is.na(pca_X), arr.ind = TRUE)
+      pca_X[na_idx_pca] <- snp_means_pca[na_idx_pca[, 1L]]
+    }
+
+    # -- Build sample x sample GRM -------------------------------------------
+    # Xc = centred genotype matrix (samples x SNPs); GRM = Xc %*% t(Xc) / m
+    .report_progress("    Building GRM (", ncol(pca_X),
+                     " samples x ", nrow(pca_X), " SNPs) ...",
+                     verbose = verbose)
+    Xc_pca <- scale(t(pca_X), center = TRUE, scale = FALSE)
+    rm(pca_X)
+    m_pca  <- ncol(Xc_pca)
+    K_pca  <- tcrossprod(Xc_pca) / m_pca
+    rm(Xc_pca)
+
+    # -- Eigendecomposition backend ------------------------------------------
+    # "auto"       -> use RSpectra if installed (faster for large GRMs),
+    #                 otherwise fall back to base eigen()
+    # "rspectra"   -> require RSpectra; error if not installed
+    # "grm_eigen"  -> always use base eigen() regardless of RSpectra availability
+    #
+    # Install RSpectra for faster PCA on large sample sets (> 500 samples):
+    #   install.packages("RSpectra")
+    backend_pca <- if (identical(pca_method, "auto")) {
+      if (requireNamespace("RSpectra", quietly = TRUE)) {
+        .report_progress(
+          "    RSpectra available -- using fast partial eigendecomposition",
+          verbose = verbose)
+        "rspectra"
+      } else {
+        .report_progress(
+          "    RSpectra not installed -- using base eigen(). ",
+          "Install RSpectra for faster PCA: install.packages(\"RSpectra\")",
+          verbose = verbose)
+        "grm_eigen"
+      }
+    } else if (identical(pca_method, "rspectra")) {
+      if (!requireNamespace("RSpectra", quietly = TRUE))
+        stop('pca_method = "rspectra" requires the RSpectra package. ',
+             'Install it with: install.packages("RSpectra")', call. = FALSE)
+      "rspectra"
+    } else {
+      "grm_eigen"
+    }
+    .report_progress("    Eigendecomposition backend: ", backend_pca,
+                     verbose = verbose)
+
+    pcs <- if (identical(backend_pca, "rspectra")) {
+      tryCatch(
+        RSpectra::eigs_sym(K_pca, k = n_pcs)$vectors,
+        error = function(e) {
+          warning("RSpectra::eigs_sym() failed, falling back to base eigen(): ",
+                  e$message, call. = FALSE)
+          eigen(K_pca, symmetric = TRUE)$vectors[, seq_len(n_pcs), drop = FALSE]
+        }
+      )
+    } else {
+      # base eigen() -- computes all eigenvalues but reliable on any platform
+      eigen(K_pca, symmetric = TRUE)$vectors[, seq_len(n_pcs), drop = FALSE]
+    }
+    rm(K_pca)
+
+    # -- Attach PCs as covariates --------------------------------------------
+    pc_mat <- pcs
+    rownames(pc_mat) <- g$sample_ids
+    colnames(pc_mat) <- paste0("PC", seq_len(n_pcs))
+    covariates <- as.data.frame(pc_mat)
+
+    .report_progress("    PC1-PC", n_pcs,
+                     " added as covariates for screening",
+                     verbose = verbose)
+  }
 
   # -- Step 5 (optional): High-LD pre-pruning ---------------------------------
   if (isTRUE(preprune_large)) {
