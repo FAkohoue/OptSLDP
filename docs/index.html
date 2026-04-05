@@ -117,9 +117,9 @@
 <li>
 <strong>Chromosome-streaming output writing</strong> — step 11 writes the final panel chromosome by chromosome from GDS, keeping peak RAM proportional to one chromosome rather than the full final panel.</li>
 <li>
-<strong>Parallel background pruning</strong> — step 9 processes chromosomes simultaneously using FORK workers on Linux (one GDS handle per worker), reducing background pruning time from ~66 minutes to ~8 minutes for 11-chromosome rice WGS data.</li>
+<strong>Sequential background pruning</strong> — step 9 processes each chromosome sequentially from GDS with a fresh read-only handle per chromosome, ensuring clean handle state and reliable completion on all platforms.</li>
 <li>
-<strong>Automatic PCA for population structure</strong> — set <code>n_pcs</code> to compute principal components automatically from a LD-pruned SNP subset and use them as GLM covariates. No pre-computation required.</li>
+<strong>Automatic fast PCA for population structure</strong> — set <code>n_pcs</code> to compute principal components automatically after MAF filtering via GRM eigendecomposition on a chromosome-balanced SNP subset. No LD pruning pass required. Optional <code>RSpectra</code> backend for large sample sets.</li>
 </ol>
 <p>OptSLDP is also inspired by the genome-wide association study-derived marker weighting approach of Akohoue et al. (2026) for blast resistance prediction in rice, and scales automatically from small in-memory panels to whole-genome sequencing datasets with more than 10 million SNPs.</p>
 <hr>
@@ -555,7 +555,7 @@
 <p><strong>Population structure correction.</strong> When <code>n_pcs &gt; 0</code> (or <code>covar_cols</code> is supplied), <span class="math inline">\(y\)</span> is first projected onto the covariate space and the residuals are used as the working phenotype:</p>
 <p><span class="math display">\[y^* = y - X_c\!\left(X_c^\top X_c\right)^{-1}X_c^\top y = M_{X_c}\,y\]</span></p>
 <p>where <span class="math inline">\(M_{X_c}\)</span> is the annihilator matrix and <span class="math inline">\(X_c\)</span> contains the PC scores. This is equivalent to fitting <span class="math inline">\(y \sim \text{PC1} + \text{PC2} + \cdots + g_i\)</span> for every SNP but residualisation is performed once before the SNP loop, giving an <span class="math inline">\(O(n_c)\)</span> saving over re-fitting covariates <span class="math inline">\(p\)</span> times.</p>
-<p>When <code>n_pcs &gt; 0</code> and <code>covar_cols = NULL</code>, PCs are computed automatically from a LD-pruned SNP subset via <code>snpgdsPCA()</code>. The user only specifies how many PCs to include. Typical values: 3 for mildly structured populations, 5 for panels with clear subgroup separation.</p>
+<p>When <code>n_pcs &gt; 0</code> and <code>covar_cols = NULL</code>, PCs are computed automatically after MAF filtering via GRM eigendecomposition on a chromosome-balanced SNP subset — no LD pruning pass required. The user only specifies how many PCs to include. Typical values: 3 for mildly structured populations, 5 for panels with clear subgroup separation.</p>
 <p><strong>Reported statistics per SNP:</strong></p>
 <p><strong>Effect size</strong></p>
 <p><span class="math display">\[\hat{\beta}_i = \frac{\text{Cov}(g_i, y^*)}{\text{Var}(g_i)}\]</span></p>
@@ -621,7 +621,8 @@
 <p><strong>Step 1.</strong> For each trait <span class="math inline">\(k = 1, \ldots, K\)</span>, residualise the phenotype on the shared covariates independently, run the full marginal scan to obtain per-trait statistics, and apply the threshold criteria to obtain a per-trait candidate set.</p>
 <p><strong>Step 2.</strong> Form the <strong>union candidate set</strong>:</p>
 <p><span class="math display">\[\mathcal{C}^* = \bigcup_{k=1}^{K}\mathcal{C}^{(k)}\]</span></p>
-<p><strong>Step 3.</strong> Expand <span class="math inline">\(\mathcal{C}^*\)</span> into the protected set <span class="math inline">\(\mathcal{I}^*\)</span> using the positional window and LD-neighbour rules (§4).</p>
+<p><strong>Step 3.</strong> Expand the union into the protected set using the positional window and LD-neighbour rules (§4):</p>
+<p><span class="math display">\[\text{Expand } \mathcal{C}^* \rightarrow \mathcal{I}^* \text{ via positional window } \pm w \text{ kb and LD neighbours } r^2 \ge \tau_{\text{flag}}\]</span></p>
 <p><strong>Step 4.</strong> Prune the background <span class="math inline">\(\Omega \setminus \mathcal{I}^*\)</span> (§5).</p>
 <p>This guarantees that <strong>every SNP important for any trait is retained</strong>, while background pruning is performed once on the shared remaining set.</p>
 <p>The return value in multi-trait mode includes: - <code>$screening_stats</code> — a <strong>named list</strong> of per-trait <code>data.table</code>s. - <code>$candidate_snps_per_trait</code> — a named list of per-trait candidate vectors. - <code>$candidate_snps</code> — the union across all traits.</p>

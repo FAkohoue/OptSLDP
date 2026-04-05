@@ -776,14 +776,14 @@ run_sldp <- function(genotype_file,
   # load the full final panel into RAM. final_geno_mat is returned as NULL.
   # In-memory/chunked: slice the already-loaded matrix (cheap).
   #
-  # IMPORTANT: reopen GDS before writing. The FORK cluster in step 9
-  # (parallel background pruning) shares file descriptors with the parent
-  # process. After the cluster closes, the parent's GDS handle may be in
-  # an invalid state. Reopening guarantees a clean handle for step 11.
+  # Reopen GDS with a fresh handle before writing. Background pruning
+  # (step 9) opens and closes its own per-chromosome handles, which can
+  # leave the main handle in an uncertain state. Reopening guarantees
+  # a clean handle for step 11.
   .report_progress("[11] Writing output to: ", output_file, verbose = verbose)
 
   if (identical(strategy, "gds")) {
-    # Reopen GDS with a fresh handle -- safe after FORK workers have exited
+    # Reopen GDS with a fresh handle for step 11 output writing
     .close_gds(ctx$genofile, key = "main")
     ctx$genofile <- .open_gds(ctx$gds_path, key = "main_write")
 

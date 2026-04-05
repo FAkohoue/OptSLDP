@@ -204,9 +204,9 @@ peak RAM ~300 MB vs ~4 GB for full extraction</td>
 <code>final_geno_mat</code> is <code>NULL</code> for GDS runs</td>
 </tr>
 <tr class="odd">
-<td>Parallel background pruning</td>
-<td>Step 9 uses FORK workers (one GDS handle per worker) to prune
-chromosomes simultaneously; ~8x speedup on multi-core Linux servers</td>
+<td>Sequential background pruning</td>
+<td>Step 9 processes each chromosome from GDS sequentially with a fresh
+read-only handle per chromosome</td>
 </tr>
 <tr class="even">
 <td>Automatic PCA (<code>n_pcs</code>)</td>
@@ -1939,9 +1939,10 @@ in the GDS strategy (<code>snpgdsLDMat</code>,
 screening step uses vectorised matrix algebra (BLAS
 <code>tcrossprod</code>) for all SNPs simultaneously rather than per-SNP
 <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> calls. When multiple traits are requested, traits are
-screened in parallel using a FORK cluster on Linux. The C++ LD kernel
-(RcppArmadillo) calls BLAS DGEMM which is automatically multi-threaded
-by the system BLAS (OpenBLAS or MKL).</p>
+screened in parallel using a FORK cluster on Linux (background
+chromosome pruning is sequential). The C++ LD kernel (RcppArmadillo)
+calls BLAS DGEMM which is automatically multi-threaded by the system
+BLAS (OpenBLAS or MKL).</p>
 <hr>
 </div>
 </div>

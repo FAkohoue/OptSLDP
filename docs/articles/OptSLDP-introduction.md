@@ -48,7 +48,7 @@ The final panel is \\\mathcal{I} \cup \text{retained}(\mathcal{B})\\.
 | Batched LD expansion | Genotypes extracted once per chromosome; `foverlaps()` O(n log n) joins replace O(n^2) loops; GDS reads reduced from thousands to ~11 |
 | Chromosome-streaming screening | Step 6 extracts and screens one 50k-SNP chunk at a time in GDS mode; peak RAM ~300 MB vs ~4 GB for full extraction |
 | Chromosome-streaming output | Step 11 writes final panel chromosome-by-chromosome from GDS; `final_geno_mat` is `NULL` for GDS runs |
-| Parallel background pruning | Step 9 uses FORK workers (one GDS handle per worker) to prune chromosomes simultaneously; ~8x speedup on multi-core Linux servers |
+| Sequential background pruning | Step 9 processes each chromosome from GDS sequentially with a fresh read-only handle per chromosome |
 | Automatic PCA (`n_pcs`) | PCs computed from a chromosome-balanced SNP subset via GRM eigendecomposition; no LD pruning pass required |
 
 ------------------------------------------------------------------------
@@ -1460,8 +1460,9 @@ screening step uses vectorised matrix algebra (BLAS `tcrossprod`) for
 all SNPs simultaneously rather than per-SNP
 [`lm()`](https://rdrr.io/r/stats/lm.html) calls. When multiple traits
 are requested, traits are screened in parallel using a FORK cluster on
-Linux. The C++ LD kernel (RcppArmadillo) calls BLAS DGEMM which is
-automatically multi-threaded by the system BLAS (OpenBLAS or MKL).
+Linux (background chromosome pruning is sequential). The C++ LD kernel
+(RcppArmadillo) calls BLAS DGEMM which is automatically multi-threaded
+by the system BLAS (OpenBLAS or MKL).
 
 ------------------------------------------------------------------------
 

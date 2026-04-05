@@ -52,13 +52,15 @@ OptSLDP improves on that foundation in 12 concrete ways:
 10. **Chromosome-streaming output writing** — step 11 writes the final
     panel chromosome by chromosome from GDS, keeping peak RAM
     proportional to one chromosome rather than the full final panel.
-11. **Parallel background pruning** — step 9 processes chromosomes
-    simultaneously using FORK workers on Linux (one GDS handle per
-    worker), reducing background pruning time from ~66 minutes to ~8
-    minutes for 11-chromosome rice WGS data.
-12. **Automatic PCA for population structure** — set `n_pcs` to compute
-    principal components automatically from a LD-pruned SNP subset and
-    use them as GLM covariates. No pre-computation required.
+11. **Sequential background pruning** — step 9 processes each chromosome
+    sequentially from GDS with a fresh read-only handle per chromosome,
+    ensuring clean handle state and reliable completion on all
+    platforms.
+12. **Automatic fast PCA for population structure** — set `n_pcs` to
+    compute principal components automatically after MAF filtering via
+    GRM eigendecomposition on a chromosome-balanced SNP subset. No LD
+    pruning pass required. Optional `RSpectra` backend for large sample
+    sets.
 
 OptSLDP is also inspired by the genome-wide association study-derived
 marker weighting approach of Akohoue et al. (2026) for blast resistance
@@ -336,8 +338,9 @@ before the SNP loop, giving an \\O(n_c)\\ saving over re-fitting
 covariates \\p\\ times.
 
 When `n_pcs > 0` and `covar_cols = NULL`, PCs are computed automatically
-from a LD-pruned SNP subset via `snpgdsPCA()`. The user only specifies
-how many PCs to include. Typical values: 3 for mildly structured
+after MAF filtering via GRM eigendecomposition on a chromosome-balanced
+SNP subset — no LD pruning pass required. The user only specifies how
+many PCs to include. Typical values: 3 for mildly structured
 populations, 5 for panels with clear subgroup separation.
 
 **Reported statistics per SNP:**
@@ -477,9 +480,12 @@ obtain a per-trait candidate set.
 
 \\\mathcal{C}^\* = \bigcup\_{k=1}^{K}\mathcal{C}^{(k)}\\
 
-**Step 3.** Expand \\\mathcal{C}^\*\\ into the protected set
-\\\mathcal{I}^\*\\ using the positional window and LD-neighbour rules
-(§4).
+**Step 3.** Expand the union into the protected set using the positional
+window and LD-neighbour rules (§4):
+
+\\\text{Expand } \mathcal{C}^\* \rightarrow \mathcal{I}^\* \text{ via
+positional window } \pm w \text{ kb and LD neighbours } r^2 \ge
+\tau\_{\text{flag}}\\
 
 **Step 4.** Prune the background \\\Omega \setminus \mathcal{I}^\*\\
 (§5).

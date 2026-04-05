@@ -28,11 +28,9 @@
   [`extract_final_geno()`](https://FAkohoue.github.io/OptSLDP/reference/extract_final_geno.md)
   to recover it if needed.
 
-- **Parallel background pruning (step 9)** – chromosomes pruned
-  simultaneously using a FORK cluster on Linux (one independent
-  read-only GDS handle per worker). With 8 cores and 11 chromosomes,
-  step 9 time drops from ~66 minutes to ~8-10 minutes. Falls back to
-  sequential on Windows.
+- **Sequential background pruning (step 9)** – chromosomes pruned one at
+  a time from GDS; each chromosome opens its own read-only handle and
+  closes it immediately after, preventing handle corruption.
 
 - **`method = "corr"` enforced in `snpgdsPruneLD`** – both
   `.prune_background_chr_gds()` and `.preprune_chr_gds()` now pass
@@ -73,17 +71,14 @@
   replaced with plain-text formulas to avoid complex `\widehat`, `\frac`
   inside markdown table cells.
 
-- **GDS FORK handle corruption fixed (step 11)** – after the parallel
-  FORK cluster in step 9, the parent GDS handle was in an invalid state
-  causing step 11 to silently skip all chromosomes and produce no output
-  file. Fixed by explicitly closing and reopening `ctx$genofile` before
-  the output writing loop.
+- **GDS handle corruption fixed (step 11)** – after step 9 background
+  pruning, the parent GDS handle could be in an invalid state causing
+  step 11 to silently skip all chromosomes. Fixed by closing and
+  reopening `ctx$genofile` before the output writing loop.
 
-- **Duplicate GDS open error fixed (step 9)** – FORK workers failed with
-  “file has been created or opened” because SNPRelate tracks open files
-  globally and the parent handle was still open when workers tried to
-  open the same file. Fixed by closing the parent handle before
-  `makeCluster()` and reopening after all workers exit.
+- **GDS handle management fixed (step 9)** – per-chromosome pruning now
+  opens a fresh read-only GDS handle for each chromosome and closes it
+  immediately after, preventing handle state issues across chromosomes.
 
 - **[`expand_important_snps()`](https://FAkohoue.github.io/OptSLDP/reference/expand_important_snps.md)
   empty candidates guard** – previously crashed with a cryptic
@@ -108,8 +103,8 @@
 
 - **GDS end-to-end test (section 16)** – forces `scale_strategy = "gds"`
   on the small example dataset to exercise the full GDS path including
-  FORK cluster and step 11 file writer. Catches future GDS handle
-  corruption bugs.
+  sequential chromosome pruning and step 11 file writer. Catches future
+  GDS handle corruption bugs.
 
 ### New features (continued)
 

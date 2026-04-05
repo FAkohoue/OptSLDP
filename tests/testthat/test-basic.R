@@ -27,7 +27,7 @@
 #                                  hapmap output; pre-pruning; stats output files
 # 15.  C++ kernel functions     -- r2_subset_cpp, above_threshold_subset_cpp,
 #                                  greedy_prune_r2_cpp; vectorised OLS vs lm()
-# 16.  GDS end-to-end           -- forced GDS strategy; FORK cluster; step 11
+# 16.  GDS end-to-end           -- forced GDS strategy; sequential pruning; step 11
 #                                  file writer; final_geno_mat NULL; CHR/POS order
 # 17.  read_hapmap_genotype()    -- structure, dimensions, values, REF/ALT;
 #                                  same dosage as numeric reader
@@ -1613,8 +1613,8 @@ test_that("vectorised screening p-values are in (0,1] for polymorphic SNPs", {
 # Section 16 -- GDS strategy end-to-end output test
 # ==============================================================================
 # Forces scale_strategy = "gds" on the small example dataset to exercise the
-# full GDS path: chunked screening -> expansion -> parallel pruning -> step 11
-# file writer. This catches the FORK-cluster GDS handle corruption bug.
+# full GDS path: chunked screening -> expansion -> sequential pruning -> step 11
+# file writer. Validates output file creation, dimensions, and SNP ordering.
 
 test_that("GDS strategy writes output file and returns correct structure", {
   skip_if_not_installed("SNPRelate")

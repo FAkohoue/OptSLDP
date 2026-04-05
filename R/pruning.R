@@ -264,85 +264,37 @@ prune_background_snps <- function(remaining_snps,
     chr_levels <- unique(rem_info$CHR)
     gds_path   <- ctx$gds_path
 
-    # Parallelise across chromosomes using FORK workers (Linux/macOS only).
-    # Each worker opens its own GDS file handle -- GDS handles are NOT
-    # thread-safe so the main handle (ctx$genofile) is never shared.
-    # On Windows falls back to sequential processing.
-    n_chr     <- length(chr_levels)
-    n_workers <- if (.Platform$OS.type == "unix")
-      min(n_chr, max(1L, ctx$n_cores))
-    else 1L
-
-    # When parallelising across chromosomes give each worker 1 thread
-    # (total threads = n_workers * 1 ~ n_cores). When sequential give
-    # all threads to SNPRelate for each chromosome.
-    threads_per_chr <- if (n_workers > 1L) 1L else ctx$n_cores
-
-    .report_progress(
-      "  Parallelising across ", n_workers, " chromosome workers",
-      " (", threads_per_chr, " thread(s) per chromosome)",
-      verbose = verbose && n_workers > 1L
-    )
-
-    prune_one_chr <- function(chr) {
+    results <- lapply(chr_levels, function(chr) {
       chr_snps <- rem_info$SNP[rem_info$CHR == chr]
       if (length(chr_snps) <= 1L) return(chr_snps)
 
-      # Each worker opens its own independent read-only GDS handle.
-      # The parent handle is closed before the cluster starts (see below)
-      # so SNPRelate does not see duplicate opens.
+      .report_progress(
+        "  Background pruning chromosome ", chr,
+        " (", length(chr_snps), " SNPs) [GDS]",
+        verbose = verbose
+      )
+
+      # Open a fresh read-only handle for this chromosome.
       gf <- tryCatch(
         SNPRelate::snpgdsOpen(gds_path, readonly = TRUE, allow.fork = TRUE),
-        error = function(e) stop("Worker failed to open GDS: ", e$message)
+        error = function(e) stop("Failed to open GDS for chr ", chr,
+                                 ": ", e$message, call. = FALSE)
       )
       on.exit(tryCatch(SNPRelate::snpgdsClose(gf),
                        error = function(e) NULL), add = TRUE)
 
-      .prune_background_chr_gds(
-        gf, chr_snps,
-        r2_genome    = r2_genome,
-        slide_max_bp = slide_max_bp,
-        method       = "corr",
-        n_cores      = threads_per_chr
+      tryCatch(
+        .prune_background_chr_gds(
+          gf, chr_snps,
+          r2_genome    = r2_genome,
+          slide_max_bp = slide_max_bp,
+          method       = "corr",
+          n_cores      = ctx$n_cores
+        ),
+        error = function(e)
+          stop("chr ", chr, ": ", e$message, call. = FALSE)
       )
-    }
-
-    if (n_workers > 1L) {
-      # Close the parent GDS handle BEFORE forking so SNPRelate does not
-      # see the same file opened twice (parent + worker = duplicate open error).
-      # The parent reopens its handle after all workers have finished.
-      tryCatch(SNPRelate::snpgdsClose(ctx$genofile),
-               error = function(e) NULL)
-
-      cl <- parallel::makeCluster(n_workers, type = "FORK")
-      on.exit(parallel::stopCluster(cl), add = TRUE)
-
-      results <- parallel::parLapply(cl, chr_levels, function(chr) {
-        n_chr_snps <- length(rem_info$SNP[rem_info$CHR == chr])
-        message(format(Sys.time(), "[%Y-%m-%d %H:%M:%S]"),
-                "  Background pruning chromosome ", chr,
-                " (", n_chr_snps, " SNPs) [GDS parallel]")
-        prune_one_chr(chr)
-      })
-
-      parallel::stopCluster(cl)
-
-      # Reopen parent handle now that all workers have exited
-      ctx$genofile <- SNPRelate::snpgdsOpen(gds_path, readonly = TRUE,
-                                            allow.fork = TRUE)
-
-    } else {
-      # Sequential fallback (Windows or single core)
-      results <- lapply(chr_levels, function(chr) {
-        chr_snps <- rem_info$SNP[rem_info$CHR == chr]
-        .report_progress(
-          "  Background pruning chromosome ", chr,
-          " (", length(chr_snps), " SNPs) [GDS]",
-          verbose = verbose
-        )
-        prune_one_chr(chr)
-      })
-    }
+    })
 
     kept_all <- unique(unlist(results, use.names = FALSE))
     return(kept_all)
