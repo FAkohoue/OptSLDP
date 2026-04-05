@@ -264,6 +264,12 @@ prune_background_snps <- function(remaining_snps,
     chr_levels <- unique(rem_info$CHR)
     gds_path   <- ctx$gds_path
 
+    # Close the main GDS handle before the lapply loop so SNPRelate does not
+    # see duplicate opens when each chromosome worker opens its own handle.
+    # The caller (sldp.R step 11) reopens a fresh handle after this returns.
+    tryCatch(SNPRelate::snpgdsClose(ctx$genofile),
+             error = function(e) NULL)
+
     results <- lapply(chr_levels, function(chr) {
       chr_snps <- rem_info$SNP[rem_info$CHR == chr]
       if (length(chr_snps) <= 1L) return(chr_snps)

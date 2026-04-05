@@ -126,7 +126,7 @@
 - **`utils_cpp.R` rewritten** – `.get_cpp_fun()` / `.cpp_available()`
   helper uses `asNamespace("OptSLDP")` for robust function lookup under
   both
-  [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
+  [`devtools::load_all()`](https://rdrr.io/pkg/devtools/man/load_all.html)
   and installed builds. `.screen_chunk()` wrapper added for
   `screen_chunk_cpp()`. All four C++ wrappers now have pure-R fallbacks
   that produce correct results (not just empty matrices).
