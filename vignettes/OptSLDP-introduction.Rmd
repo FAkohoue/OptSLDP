@@ -38,6 +38,66 @@ with statistically important SNPs substantially improves genomic prediction
 accuracy compared to standard uniform LD pruning. `OptSLDP` extends that
 work with four concrete algorithmic improvements described in detail below.
 
+## Motivation and importance
+
+Genomic selection has transformed plant and animal breeding by enabling
+accurate prediction of complex trait performance from dense marker panels,
+without phenotyping every individual in every environment. The quality of
+the marker panel used to train genomic prediction models directly determines
+how much genetic signal is captured — and therefore how accurate predictions
+are.
+
+### The marker panel construction problem
+
+Most practitioners apply standard LD pruning (e.g., PLINK `--indep-pairwise`)
+to reduce redundancy before training genomic models, treating it as a
+preprocessing step rather than a modelling decision. This approach has a
+fundamental flaw: it removes one marker from every highly correlated pair
+**without regard to whether either marker is statistically associated with
+the trait of interest**. The consequences are:
+
+- When a QTL region contains a cluster of correlated markers, all but one
+  are discarded. The retained singleton may not be the best proxy for the
+  causal variant.
+- Statistical evidence about the region is reduced — markers that could
+  collectively explain QTL variance are pruned to a single imperfect
+  representative.
+- Genomic prediction models lose signal around important loci, systematically
+  underestimating the genetic variance explained by those regions.
+
+### Why SLDP improves genomic prediction
+
+The SLDP approach (Zhu et al., 2023) addresses this by partitioning the
+marker set before pruning. Regions with statistical evidence of trait
+association are **protected in full**; only the remaining background markers
+receive LD pruning. Zhu et al. demonstrated substantial improvements in
+genomic prediction accuracy for growth and carcass traits in pigs compared
+to standard uniform LD pruning.
+
+### Why a new implementation is needed
+
+Modern breeding programs face three challenges beyond the original SLDP scope:
+
+**Scale.** Whole-genome sequencing panels routinely contain 2–10 million SNPs
+across hundreds of samples. Loading the full genotype matrix into RAM is
+infeasible on most workstations. `OptSLDP` handles such panels via a
+disk-backed GDS backend that streams genotypes one chromosome at a time,
+keeping peak RAM around 300 MB regardless of total panel size.
+
+**Multiple traits.** Breeding programs select simultaneously for yield,
+disease resistance, quality, and adaptation. A marker important for blast
+resistance but not yield should not be pruned from a multi-trait prediction
+panel. `OptSLDP` screens each trait independently and protects the **union**
+of all per-trait candidate regions — every genomic locus important for *any*
+target trait is retained.
+
+**Population structure.** Diverse panels (multi-country nurseries, multi-breed
+populations) require stratification correction to avoid false positives that
+would inflate the protected set. `OptSLDP` computes principal components
+automatically from the genotype data after MAF filtering via GRM
+eigendecomposition, with no manual pre-computation or separate software
+required.
+
 ## Why standard LD pruning is not enough for genomic prediction
 
 Standard LD pruning (e.g., PLINK `--indep-pairwise`) removes one marker from
@@ -1060,10 +1120,14 @@ geno_final <- extract_final_geno(
 )
 ```
 
-The `gds` strategy writes the genotype matrix to a binary SNPRelate file once,
-then all LD queries stream from disk in blocks. All GDS file handles are
-tracked in a package-level registry (`.sldp_gds_env`) and closed automatically
-on pipeline exit or on error via `on.exit(.close_all_gds_handles())`.
+The `gds` strategy writes the genotype matrix to a binary SNPRelate file at
+the start of every run. The GDS file is **always rebuilt** to prevent stale
+data from a previous run causing incorrect pruning results. Chromosome labels
+are stored as integers (supporting `1`, `chr1`, `Chr01` formats) so that
+`snpgdsLDpruning()` performs chromosome-aware sliding-window pruning correctly.
+All GDS file handles are tracked in a package-level registry (`.sldp_gds_env`)
+and closed automatically on pipeline exit or on error via
+`on.exit(.close_all_gds_handles())`.
 
 ---
 

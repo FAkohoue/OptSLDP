@@ -59,6 +59,31 @@
   invisible(NULL)
 }
 
+# -- SNP ID lookup helpers -----------------------------------------------------
+# sldp_main.gds stores snp.id as integer (1:N) and SNP name strings in
+# snp.rs.id. These helpers convert between name-based and integer-based IDs.
+
+#' Convert SNP name vector to integer GDS IDs via snp.rs.id lookup
+#' @keywords internal
+#' @noRd
+.snp_names_to_int_ids <- function(genofile, snp_names) {
+  rs_ids  <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.rs.id"))
+  int_ids <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.id"))
+  idx <- match(snp_names, rs_ids)
+  if (anyNA(idx))
+    stop("Some SNP names not found in GDS snp.rs.id node: ",
+         paste(head(snp_names[is.na(idx)], 5L), collapse = ", "),
+         call. = FALSE)
+  int_ids[idx]
+}
+
+#' Read full SNP name vector from snp.rs.id node
+#' @keywords internal
+#' @noRd
+.read_snp_rs_ids <- function(genofile) {
+  gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.rs.id"))
+}
+
 
 # -- GDS file construction ------------------------------------------------------
 
@@ -81,29 +106,66 @@
 .write_gds <- function(geno_mat, snp_info, gds_path,
                        n_cores = 1L, verbose = TRUE) {
   .assert_packages("SNPRelate")
+
   .report_progress(
     "Writing ", nrow(geno_mat), " SNPs to GDS: ", gds_path,
     verbose = verbose
   )
 
+  # Always rebuild the GDS to avoid stale reuse across runs
   if (file.exists(gds_path)) {
-    .report_progress("Reusing existing GDS: ", basename(gds_path),
+    .report_progress("Removing existing GDS: ", basename(gds_path),
                      verbose = verbose)
-  } else {
-    SNPRelate::snpgdsCreateGeno(
-      gds.fn         = gds_path,
-      genmat         = geno_mat,
-      sample.id      = colnames(geno_mat),
-      snp.id         = snp_info$SNP,
-      snp.chromosome = snp_info$CHR,
-      snp.position   = snp_info$POS,
-      snp.allele     = paste(snp_info$REF, snp_info$ALT, sep = "/"),
-      snpfirstdim    = TRUE,
-      compress.annotation = "ZIP.max",
-      compress.geno       = "ZIP.max"
-    )
-    .report_progress("GDS file written.", verbose = verbose)
+    unlink(gds_path)
   }
+
+  # Convert chromosome labels to integers for SNPRelate.
+  # Handles:
+  #   1, 2, 3
+  #   "1", "2", "3"
+  #   "chr1", "chr2", "chr3"
+  #   "Chr01", "CHR12"
+  chr_raw   <- as.character(snp_info$CHR)
+  chr_clean <- sub("^chr", "", chr_raw, ignore.case = TRUE)
+  chr_int   <- suppressWarnings(as.integer(chr_clean))
+
+  if (length(chr_int) != nrow(snp_info)) {
+    stop("Failed to construct integer chromosome vector for GDS writing.",
+         call. = FALSE)
+  }
+
+  if (anyNA(chr_int)) {
+    bad_chr <- unique(chr_raw[is.na(chr_int)])
+    stop(
+      paste0(
+        "Some chromosome labels could not be converted to integers for GDS writing: ",
+        paste(utils::head(bad_chr, 10L), collapse = ", "),
+        if (length(bad_chr) > 10L) " ..." else "",
+        "\nExamples of valid formats: 1, 2, 3 or chr1, chr2, chr3"
+      ),
+      call. = FALSE
+    )
+  }
+
+  # Store integer 1:N as snp.id (required by snpgdsLDpruning).
+  # SNP name strings are stored in snp.rs.id for reverse lookup.
+  snp_int_ids <- seq_len(nrow(snp_info))
+
+  SNPRelate::snpgdsCreateGeno(
+    gds.fn         = gds_path,
+    genmat         = geno_mat,
+    sample.id      = colnames(geno_mat),
+    snp.id         = snp_int_ids,
+    snp.rs.id      = snp_info$SNP,
+    snp.chromosome = chr_int,
+    snp.position   = snp_info$POS,
+    snp.allele     = paste(snp_info$REF, snp_info$ALT, sep = "/"),
+    snpfirstdim    = TRUE,
+    compress.annotation = "ZIP.max",
+    compress.geno       = "ZIP.max"
+  )
+
+  .report_progress("GDS file written.", verbose = verbose)
   invisible(gds_path)
 }
 
@@ -188,17 +250,22 @@
 .compute_r2_gds <- function(genofile, snp_ids,
                             method  = "corr",
                             n_cores = 1L) {
+  int_ids <- .snp_names_to_int_ids(genofile, snp_ids)
   ld_obj  <- .snprelate_call(
     SNPRelate::snpgdsLDMat,
     genofile,
-    snp.id  = snp_ids,
+    snp.id  = int_ids,
     method  = method,
     slide   = -1L,
     n_cores = n_cores
   )
-  r2_mat          <- ld_obj$LD^2
-  rownames(r2_mat) <- ld_obj$snp.id
-  colnames(r2_mat) <- ld_obj$snp.id
+  r2_mat <- ld_obj$LD^2
+  # Map integer IDs back to SNP name strings
+  rs_all  <- .read_snp_rs_ids(genofile)
+  int_all <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.id"))
+  snp_names_out    <- rs_all[match(ld_obj$snp.id, int_all)]
+  rownames(r2_mat) <- snp_names_out
+  colnames(r2_mat) <- snp_names_out
   r2_mat
 }
 
@@ -253,7 +320,10 @@
   keep <- freq$AlleleFreq >= maf_min &
     freq$AlleleFreq <= (1 - maf_min) &
     freq$MissingRate <= missing_max
-  freq$snp.id[keep]
+  kept_int <- freq$snp.id[keep]
+  rs_all   <- .read_snp_rs_ids(genofile)
+  int_all  <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.id"))
+  rs_all[match(kept_int, int_all)]
 }
 
 
@@ -281,15 +351,19 @@
   kept <- .snprelate_call(
     SNPRelate::snpgdsLDpruning,
     genofile,
-    snp.id       = snp_ids,
+    snp.id       = .snp_names_to_int_ids(genofile, snp_ids),
     ld.threshold = sqrt(r2_pre),   # sqrt because snpgdsLDpruning uses |r|, not r^2
     slide.max.bp = slide_max_bp,
-    slide.max.n  = -1L,
+    slide.max.n = NA_integer_,
     missing.rate = 0.10,
     method       = "corr",         # Pearson r -- consistent with r2 used elsewhere
     n_cores      = n_cores
   )
-  kept
+  # Map integer IDs back to SNP names
+  kept_int_vec <- unlist(kept, use.names = FALSE)
+  rs_all  <- .read_snp_rs_ids(genofile)
+  int_all <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.id"))
+  rs_all[match(kept_int_vec, int_all)]
 }
 
 
@@ -311,17 +385,22 @@
                                       slide_max_bp = 1000000L,
                                       method       = "corr",
                                       n_cores      = 1L) {
-  .snprelate_call(
+  kept_int <- .snprelate_call(
     SNPRelate::snpgdsLDpruning,
     genofile,
-    snp.id       = snp_ids,
+    snp.id       = .snp_names_to_int_ids(genofile, snp_ids),
     ld.threshold = sqrt(r2_genome),   # sqrt because snpgdsLDpruning uses |r|, not r^2
     slide.max.bp = slide_max_bp,
-    slide.max.n  = -1L,
+    slide.max.n = NA_integer_,
     missing.rate = 0.10,
     method       = method,            # default "corr" -- consistent with r2 everywhere
     n_cores      = n_cores
   )
+  # Map integer IDs back to SNP names
+  kept_int_vec <- unlist(kept_int, use.names = FALSE)
+  rs_all  <- .read_snp_rs_ids(genofile)
+  int_all <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.id"))
+  rs_all[match(kept_int_vec, int_all)]
 }
 
 
@@ -341,15 +420,19 @@
 #' @keywords internal
 #' @noRd
 .extract_geno_gds <- function(genofile, snp_ids, sample_ids = NULL) {
+  int_ids <- .snp_names_to_int_ids(genofile, snp_ids)
   mat <- .snprelate_call(
     SNPRelate::snpgdsGetGeno,
     genofile,
-    snp.id      = snp_ids,
+    snp.id      = int_ids,
     sample.id   = sample_ids,
     snpfirstdim = TRUE,
     with.id     = TRUE
   )
-  rownames(mat$genotype) <- mat$snp.id
+  # Map integer IDs back to SNP names
+  rs_all  <- .read_snp_rs_ids(genofile)
+  int_all <- gdsfmt::read.gdsn(gdsfmt::index.gdsn(genofile, "snp.id"))
+  rownames(mat$genotype) <- rs_all[match(mat$snp.id, int_all)]
   colnames(mat$genotype) <- mat$sample.id
   storage.mode(mat$genotype) <- "numeric"
   mat$genotype

@@ -9,6 +9,57 @@
 [![pkgdown](https://github.com/FAkohoue/OptSLDP/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/FAkohoue/OptSLDP/actions/workflows/pkgdown.yaml)
 <!-- badges: end -->
 
+## Motivation
+
+Genomic selection has transformed plant and animal breeding by enabling
+accurate prediction of complex trait performance from dense marker panels,
+without requiring phenotyping of every individual in every environment.
+The quality of the marker panel used to train genomic prediction models
+directly determines how much genetic signal is captured — and therefore
+how accurate predictions are.
+
+**The marker panel construction problem** is often overlooked. Most
+practitioners apply standard LD pruning (e.g., PLINK `--indep-pairwise`)
+to reduce redundancy before training, treating it as a preprocessing step
+rather than a modelling decision. This approach has a fundamental flaw:
+it removes one marker from every highly correlated pair **without regard
+to whether either marker is statistically associated with the trait**.
+When a QTL region contains a cluster of correlated markers, all but one
+are discarded — the retained singleton may not be the best proxy for the
+causal variant, statistical power for that region is reduced, and
+genomic prediction models can lose signal around important loci.
+
+**The SLDP approach** (Zhu et al., 2023) addresses this by first identifying
+which genomic regions carry relevant trait signal, protecting all markers in
+those regions from pruning, and only then applying LD pruning to the
+remaining background markers. This preserves the full genetic signal around
+each QTL while still controlling redundancy elsewhere. Zhu et al. demonstrated
+substantial improvements in genomic prediction accuracy compared to standard uniform LD pruning.
+
+**Why a new implementation?** The original SLDP implementation handles
+single-trait analyses on moderately sized panels. Modern breeding programs
+face three additional challenges that motivated OptSLDP:
+
+1. **Scale** — Whole-genome sequencing panels routinely contain 2–10 million
+   SNPs and hundreds of samples. Loading the full genotype matrix into RAM
+   is infeasible on most workstations. OptSLDP processes such panels via a
+   disk-backed GDS backend, streaming genotypes one chromosome at a time.
+
+2. **Multiple traits** — Breeding programs select simultaneously for yield,
+   disease resistance, quality, and adaptation traits. A marker important
+   for blast resistance but not yield should not be pruned away from a
+   multi-trait prediction panel. OptSLDP runs screening independently for
+   each trait and protects the **union** of all per-trait candidate regions.
+
+3. **Population structure** — Diverse panels (e.g., multi-country rice
+   nurseries, multi-breed livestock populations) require population structure
+   correction to avoid false positives from stratification. OptSLDP computes
+   principal components automatically from the genotype data after MAF
+   filtering and uses them as screening covariates, with no manual pre-computation
+   required.
+
+---
+
 ## Summary
 
 `OptSLDP` is an **optimized and extended** implementation of Selective
@@ -501,10 +552,14 @@ options(
 ```
 
 **GDS setup for large panels.** The GDS strategy writes the genotype matrix
-to a binary SNPRelate GDS file once at the start of the pipeline. All
-subsequent LD queries stream genotypes from disk in blocks — the full matrix
-never lives in RAM simultaneously. All GDS file handles are tracked in a
-package-level registry and closed on exit or on error.
+to a binary SNPRelate GDS file at the start of every pipeline run. The GDS
+file is always rebuilt to prevent stale data from a previous run causing
+incorrect pruning results. All subsequent LD queries stream genotypes from
+disk in blocks — the full matrix never lives in RAM simultaneously. Chromosome
+labels are stored as integers (supporting formats `1`, `chr1`, `Chr01`) so
+that `snpgdsLDpruning()` can perform chromosome-aware sliding-window pruning
+correctly. All GDS file handles are tracked in a package-level registry and
+closed on exit or on error.
 
 ```r
 # Force GDS strategy and specify a persistent scratch directory

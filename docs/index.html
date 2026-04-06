@@ -92,6 +92,20 @@
 <!-- badges: start -->
 
 <div class="section level2">
+<h2 id="motivation">Motivation<a class="anchor" aria-label="anchor" href="#motivation"></a>
+</h2>
+<p>Genomic selection has transformed plant and animal breeding by enabling accurate prediction of complex trait performance from dense marker panels, without requiring phenotyping of every individual in every environment. The quality of the marker panel used to train genomic prediction models directly determines how much genetic signal is captured — and therefore how accurate predictions are.</p>
+<p><strong>The marker panel construction problem</strong> is often overlooked. Most practitioners apply standard LD pruning (e.g., PLINK <code>--indep-pairwise</code>) to reduce redundancy before training, treating it as a preprocessing step rather than a modelling decision. This approach has a fundamental flaw: it removes one marker from every highly correlated pair <strong>without regard to whether either marker is statistically associated with the trait</strong>. When a QTL region contains a cluster of correlated markers, all but one are discarded — the retained singleton may not be the best proxy for the causal variant, statistical power for that region is reduced, and genomic prediction models can lose signal around important loci.</p>
+<p><strong>The SLDP approach</strong> (Zhu et al., 2023) addresses this by first identifying which genomic regions carry relevant trait signal, protecting all markers in those regions from pruning, and only then applying LD pruning to the remaining background markers. This preserves the full genetic signal around each QTL while still controlling redundancy elsewhere. Zhu et al. demonstrated substantial improvements in genomic prediction accuracy compared to standard uniform LD pruning.</p>
+<p><strong>Why a new implementation?</strong> The original SLDP implementation handles single-trait analyses on moderately sized panels. Modern breeding programs face three additional challenges that motivated OptSLDP:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>Scale</strong> — Whole-genome sequencing panels routinely contain 2–10 million SNPs and hundreds of samples. Loading the full genotype matrix into RAM is infeasible on most workstations. OptSLDP processes such panels via a disk-backed GDS backend, streaming genotypes one chromosome at a time.</p></li>
+<li><p><strong>Multiple traits</strong> — Breeding programs select simultaneously for yield, disease resistance, quality, and adaptation traits. A marker important for blast resistance but not yield should not be pruned away from a multi-trait prediction panel. OptSLDP runs screening independently for each trait and protects the <strong>union</strong> of all per-trait candidate regions.</p></li>
+<li><p><strong>Population structure</strong> — Diverse panels (e.g., multi-country rice nurseries, multi-breed livestock populations) require population structure correction to avoid false positives from stratification. OptSLDP computes principal components automatically from the genotype data after MAF filtering and uses them as screening covariates, with no manual pre-computation required.</p></li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
 <h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
 <p><code>OptSLDP</code> is an <strong>optimized and extended</strong> implementation of Selective Linkage Disequilibrium Pruning for genomic prediction panel construction. The core idea of SLDP — preserving all markers in strong LD with statistically important SNPs so that genomic models retain the full genetic signal around each QTL, while pruning redundant background markers — is retained from the original algorithm of Zhu et al. (2023). OptSLDP improves on that foundation in 12 concrete ways:</p>
@@ -161,13 +175,13 @@
 <p>Install from GitHub with vignettes (recommended):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Install without vignettes for a faster install:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -534,7 +548,7 @@
 <p><span class="math display">\[\text{AF}_i = \frac{\sum_j g_{ij}}{2\,n_j}\]</span></p>
 <p>where <span class="math inline">\(g_{ij}\in\{0,1,2,\text{NA}\}\)</span> is the dosage for SNP <span class="math inline">\(i\)</span> in sample <span class="math inline">\(j\)</span>, and <span class="math inline">\(n_j\)</span> is the number of non-missing samples for that SNP. The minor allele frequency is:</p>
 <p><span class="math display">\[\text{MAF}_i = \min\!\left(\text{AF}_i,\;1-\text{AF}_i\right)\]</span></p>
-<p>SNPs with MAF_i &lt; tau_maf (default 0.05) are removed before any further analysis.</p>
+<p>SNPs with <span class="math inline">\(\text{MAF}_i &lt; \tau_{\text{maf}}\)</span> (default 0.05) are removed before any further analysis.</p>
 </div>
 <div class="section level3">
 <h3 id="id_2-marginal-snp-screening-glm--pca">2. Marginal SNP screening (GLM + PCA)<a class="anchor" aria-label="anchor" href="#id_2-marginal-snp-screening-glm--pca"></a>
@@ -680,7 +694,7 @@
 <span>  optsldp.thresh_small  <span class="op">=</span> <span class="fl">1e5</span>,   <span class="co"># below this: in_memory</span></span>
 <span>  optsldp.thresh_medium <span class="op">=</span> <span class="fl">1e6</span>    <span class="co"># below this: chunked; above: gds</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><strong>GDS setup for large panels.</strong> The GDS strategy writes the genotype matrix to a binary SNPRelate GDS file once at the start of the pipeline. All subsequent LD queries stream genotypes from disk in blocks — the full matrix never lives in RAM simultaneously. All GDS file handles are tracked in a package-level registry and closed on exit or on error.</p>
+<p><strong>GDS setup for large panels.</strong> The GDS strategy writes the genotype matrix to a binary SNPRelate GDS file at the start of every pipeline run. The GDS file is always rebuilt to prevent stale data from a previous run causing incorrect pruning results. All subsequent LD queries stream genotypes from disk in blocks — the full matrix never lives in RAM simultaneously. Chromosome labels are stored as integers (supporting formats <code>1</code>, <code>chr1</code>, <code>Chr01</code>) so that <code>snpgdsLDpruning()</code> can perform chromosome-aware sliding-window pruning correctly. All GDS file handles are tracked in a package-level registry and closed on exit or on error.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Force GDS strategy and specify a persistent scratch directory</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_sldp.html">run_sldp</a></span><span class="op">(</span></span>

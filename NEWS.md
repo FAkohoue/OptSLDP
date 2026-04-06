@@ -61,6 +61,18 @@
   delimiters with `\left`/`\right`. Statistics table replaced with plain-text
   formulas to avoid complex `\widehat`, `\frac` inside markdown table cells.
 
+* **GDS chromosome stored as integer** -- `snp.chromosome` is now written as
+  integer to `sldp_main.gds`, with `chr` prefix stripped automatically
+  (`chr1` → 1, `Chr01` → 1). This is required for `snpgdsLDpruning()` to
+  perform chromosome-aware sliding-window LD pruning. Previously, character
+  chromosome labels caused zero SNPs to be pruned regardless of threshold.
+  An informative error is raised for chromosome labels that cannot be
+  converted to integer (e.g. scaffold names).
+
+* **GDS always rebuilt** -- `.write_gds()` now deletes any existing
+  `sldp_main.gds` before writing, preventing stale GDS reuse across runs
+  that previously caused incorrect pruning results.
+
 * **GDS handle corruption fixed (step 11)** -- after step 9 background
   pruning, the parent GDS handle could be in an invalid state causing step 11
   to silently skip all chromosomes. Fixed by closing and reopening

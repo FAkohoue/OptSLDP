@@ -71,6 +71,19 @@
   replaced with plain-text formulas to avoid complex `\widehat`, `\frac`
   inside markdown table cells.
 
+- **GDS chromosome stored as integer** – `snp.chromosome` is now written
+  as integer to `sldp_main.gds`, with `chr` prefix stripped
+  automatically (`chr1` → 1, `Chr01` → 1). This is required for
+  `snpgdsLDpruning()` to perform chromosome-aware sliding-window LD
+  pruning. Previously, character chromosome labels caused zero SNPs to
+  be pruned regardless of threshold. An informative error is raised for
+  chromosome labels that cannot be converted to integer (e.g. scaffold
+  names).
+
+- **GDS always rebuilt** – `.write_gds()` now deletes any existing
+  `sldp_main.gds` before writing, preventing stale GDS reuse across runs
+  that previously caused incorrect pruning results.
+
 - **GDS handle corruption fixed (step 11)** – after step 9 background
   pruning, the parent GDS handle could be in an invalid state causing
   step 11 to silently skip all chromosomes. Fixed by closing and
@@ -126,7 +139,7 @@
 - **`utils_cpp.R` rewritten** – `.get_cpp_fun()` / `.cpp_available()`
   helper uses `asNamespace("OptSLDP")` for robust function lookup under
   both
-  [`devtools::load_all()`](https://rdrr.io/pkg/devtools/man/load_all.html)
+  [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
   and installed builds. `.screen_chunk()` wrapper added for
   `screen_chunk_cpp()`. All four C++ wrappers now have pure-R fallbacks
   that produce correct results (not just empty matrices).

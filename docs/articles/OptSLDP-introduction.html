@@ -106,6 +106,73 @@ substantially improves genomic prediction accuracy compared to standard
 uniform LD pruning. <code>OptSLDP</code> extends that work with four
 concrete algorithmic improvements described in detail below.</p>
 <div class="section level3">
+<h3 id="motivation-and-importance">Motivation and importance<a class="anchor" aria-label="anchor" href="#motivation-and-importance"></a>
+</h3>
+<p>Genomic selection has transformed plant and animal breeding by
+enabling accurate prediction of complex trait performance from dense
+marker panels, without phenotyping every individual in every
+environment. The quality of the marker panel used to train genomic
+prediction models directly determines how much genetic signal is
+captured — and therefore how accurate predictions are.</p>
+<div class="section level4">
+<h4 id="the-marker-panel-construction-problem">The marker panel construction problem<a class="anchor" aria-label="anchor" href="#the-marker-panel-construction-problem"></a>
+</h4>
+<p>Most practitioners apply standard LD pruning (e.g., PLINK
+<code>--indep-pairwise</code>) to reduce redundancy before training
+genomic models, treating it as a preprocessing step rather than a
+modelling decision. This approach has a fundamental flaw: it removes one
+marker from every highly correlated pair <strong>without regard to
+whether either marker is statistically associated with the trait of
+interest</strong>. The consequences are:</p>
+<ul>
+<li>When a QTL region contains a cluster of correlated markers, all but
+one are discarded. The retained singleton may not be the best proxy for
+the causal variant.</li>
+<li>Statistical evidence about the region is reduced — markers that
+could collectively explain QTL variance are pruned to a single imperfect
+representative.</li>
+<li>Genomic prediction models lose signal around important loci,
+systematically underestimating the genetic variance explained by those
+regions.</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="why-sldp-improves-genomic-prediction">Why SLDP improves genomic prediction<a class="anchor" aria-label="anchor" href="#why-sldp-improves-genomic-prediction"></a>
+</h4>
+<p>The SLDP approach (Zhu et al., 2023) addresses this by partitioning
+the marker set before pruning. Regions with statistical evidence of
+trait association are <strong>protected in full</strong>; only the
+remaining background markers receive LD pruning. Zhu et al. demonstrated
+substantial improvements in genomic prediction accuracy for growth and
+carcass traits in pigs compared to standard uniform LD pruning.</p>
+</div>
+<div class="section level4">
+<h4 id="why-a-new-implementation-is-needed">Why a new implementation is needed<a class="anchor" aria-label="anchor" href="#why-a-new-implementation-is-needed"></a>
+</h4>
+<p>Modern breeding programs face three challenges beyond the original
+SLDP scope:</p>
+<p><strong>Scale.</strong> Whole-genome sequencing panels routinely
+contain 2–10 million SNPs across hundreds of samples. Loading the full
+genotype matrix into RAM is infeasible on most workstations.
+<code>OptSLDP</code> handles such panels via a disk-backed GDS backend
+that streams genotypes one chromosome at a time, keeping peak RAM around
+300 MB regardless of total panel size.</p>
+<p><strong>Multiple traits.</strong> Breeding programs select
+simultaneously for yield, disease resistance, quality, and adaptation. A
+marker important for blast resistance but not yield should not be pruned
+from a multi-trait prediction panel. <code>OptSLDP</code> screens each
+trait independently and protects the <strong>union</strong> of all
+per-trait candidate regions — every genomic locus important for
+<em>any</em> target trait is retained.</p>
+<p><strong>Population structure.</strong> Diverse panels (multi-country
+nurseries, multi-breed populations) require stratification correction to
+avoid false positives that would inflate the protected set.
+<code>OptSLDP</code> computes principal components automatically from
+the genotype data after MAF filtering via GRM eigendecomposition, with
+no manual pre-computation or separate software required.</p>
+</div>
+</div>
+<div class="section level3">
 <h3 id="why-standard-ld-pruning-is-not-enough-for-genomic-prediction">Why standard LD pruning is not enough for genomic prediction<a class="anchor" aria-label="anchor" href="#why-standard-ld-pruning-is-not-enough-for-genomic-prediction"></a>
 </h3>
 <p>Standard LD pruning (e.g., PLINK <code>--indep-pairwise</code>)
@@ -224,7 +291,7 @@ eigendecomposition; no LD pruning pass required</td>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install from GitHub (with vignettes)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/remotes/man/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/OptSLDP"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
@@ -1770,10 +1837,15 @@ in the pipeline.</p>
 <span>  snp_ids    <span class="op">=</span> <span class="va">res_wgs</span><span class="op">$</span><span class="va">final_snp_info</span><span class="op">$</span><span class="va">SNP</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The <code>gds</code> strategy writes the genotype matrix to a binary
-SNPRelate file once, then all LD queries stream from disk in blocks. All
-GDS file handles are tracked in a package-level registry
-(<code>.sldp_gds_env</code>) and closed automatically on pipeline exit
-or on error via <code>on.exit(.close_all_gds_handles())</code>.</p>
+SNPRelate file at the start of every run. The GDS file is <strong>always
+rebuilt</strong> to prevent stale data from a previous run causing
+incorrect pruning results. Chromosome labels are stored as integers
+(supporting <code>1</code>, <code>chr1</code>, <code>Chr01</code>
+formats) so that <code>snpgdsLDpruning()</code> performs
+chromosome-aware sliding-window pruning correctly. All GDS file handles
+are tracked in a package-level registry (<code>.sldp_gds_env</code>) and
+closed automatically on pipeline exit or on error via
+<code>on.exit(.close_all_gds_handles())</code>.</p>
 <hr>
 </div>
 <div class="section level2">
